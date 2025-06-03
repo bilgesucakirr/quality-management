@@ -1,14 +1,14 @@
 // src/components/Layout.tsx
 import React from 'react';
 import Navbar from './Navbar';
-import { Outlet } from 'react-router-dom'; // <-- Bu satırı ekleyin
+import { Outlet } from 'react-router-dom'; // Make sure this is imported
 
-const Layout: React.FC = () => { // children prop'unu kaldırdık
+const Layout: React.FC = () => {
     return (
         <div className="flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-grow">
-                <Outlet /> 
+            <Navbar /> {/* Navbar will always be at the top */}
+            <main className="flex-grow"> {/* Main content area that expands */}
+                <Outlet /> {/* This is where the nested routes (Dashboard, UserManagement, etc.) will be rendered */}
             </main>
         </div>
     );
