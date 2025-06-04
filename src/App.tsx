@@ -1,33 +1,31 @@
-// src/App.tsx
+// src/App.tsx (UPDATED)
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import SurveyManagement from "./pages/SurveyManagement";
-import DataUploadPage from "./pages/DataUploadPage";
-// New: Import the new management pages
-import FacultyManagementPage from "./pages/FacultyManagementPage";
-import DepartmentManagementPage from "./pages/DepartmentManagementPage";
-import Layout from "./components/Layout"; 
+import YokakCriterionManagement from "./pages/YokakCriterionManagement"; // NEW Import
+import CourseManagement from "./pages/CourseManagement"; // NEW Import
+import DataUpload from "./pages/DataUpload"; // NEW Import
+import Layout from "./components/Layout";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes without a shared layout */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Routes wrapped with Layout (typically for authenticated users) */}
+        {/* Layout ile sarılı rotalar (genellikle giriş sonrası sayfalar) */}
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/user-management" element={<UserManagement />} />
           <Route path="/survey-management" element={<SurveyManagement />} />
-          <Route path="/data-upload" element={<DataUploadPage />} />
-          {/* New: Routes for Faculty and Department Management */}
-          <Route path="/faculty-management" element={<FacultyManagementPage />} />
-          <Route path="/department-management" element={<DepartmentManagementPage />} />
+          <Route path="/yokak-criterion-management" element={<YokakCriterionManagement />} /> {/* NEW Route */}
+          <Route path="/course-management" element={<CourseManagement />} /> {/* NEW Route */}
+          <Route path="/data-upload" element={<DataUpload />} /> {/* NEW Route */}
+          {/* Diğer yetkilendirilmiş sayfalar buraya eklenecek */}
         </Route>
       </Routes>
     </BrowserRouter>
