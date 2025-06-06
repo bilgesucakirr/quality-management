@@ -1,4 +1,3 @@
-// src/pages/CourseManagement.tsx
 import React, { useState, useEffect } from "react";
 import {
   createCourse,
@@ -13,7 +12,9 @@ import type { Faculty } from "../types/Faculty";
 import type { Department } from "../types/Department";
 import { useAuthStore } from "../store/AuthStore";
 
-const BLUE = "#05058c";
+const PRIMARY = "#21409a";
+const BORDER = "#e3e6ea";
+const BG = "#f8f9fb";
 
 const CourseManagement: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -27,7 +28,7 @@ const CourseManagement: React.FC = () => {
   const [newCourseName, setNewCourseName] = useState("");
   const [newCredits, setNewCredits] = useState<string>("");
   const [newSemester, setNewSemester] = useState("");
-  const [newFacultyId, setNewFacultyId] = useState(""); // Correct state for new course's faculty
+  const [newFacultyId, setNewFacultyId] = useState("");
   const [newDepartmentId, setNewDepartmentId] = useState("");
   const [newInstructorId, setNewInstructorId] = useState("");
 
@@ -65,21 +66,19 @@ const CourseManagement: React.FC = () => {
       setDepartments(departmentData);
       setCourses(courseData);
 
-      // Set default selected values for new course form if data exists
       if (facultyData.length > 0) {
         setNewFacultyId(facultyData[0].id);
         const initialDepartments = departmentData.filter(d => d.facultyId === facultyData[0].id);
         if (initialDepartments.length > 0) {
           setNewDepartmentId(initialDepartments[0].id);
         } else {
-          setNewDepartmentId(""); // No departments for the first faculty
+          setNewDepartmentId("");
         }
       } else {
-        setNewFacultyId(""); // No faculties available
+        setNewFacultyId("");
         setNewDepartmentId("");
       }
     } catch (err) {
-      console.error("Failed to fetch initial data:", err);
       setError("Failed to fetch data (faculties, departments, courses). Please try again.");
     } finally {
       setLoading(false);
@@ -96,7 +95,6 @@ const CourseManagement: React.FC = () => {
         setLoading(false);
         return;
       }
-
       await createCourse({
         courseCode: newCourseCode,
         courseName: newCourseName,
@@ -105,13 +103,10 @@ const CourseManagement: React.FC = () => {
         departmentId: newDepartmentId,
         instructorId: newInstructorId || undefined,
       });
-      alert("Course created successfully!");
-      // Reset form fields
       setNewCourseCode("");
       setNewCourseName("");
       setNewCredits("");
       setNewSemester("");
-      // Reset faculty/department to defaults
       if (faculties.length > 0) {
         setNewFacultyId(faculties[0].id);
         const initialDepartments = departments.filter(d => d.facultyId === faculties[0].id);
@@ -125,9 +120,8 @@ const CourseManagement: React.FC = () => {
         setNewDepartmentId("");
       }
       setNewInstructorId("");
-      fetchData(); // Re-fetch all data to update lists
+      fetchData();
     } catch (err: any) {
-      console.error("Failed to create course:", err);
       setError(err.response?.data || "Failed to create course. Please check your inputs.");
     } finally {
       setLoading(false);
@@ -140,7 +134,6 @@ const CourseManagement: React.FC = () => {
     setEditCourseName(course.courseName);
     setEditCredits(course.credits.toString());
     setEditSemester(course.semester);
-    // Find the faculty of the course's department to set the editFacultyId dropdown
     const departmentOfCourse = departments.find(d => d.id === course.departmentId);
     setEditFacultyId(departmentOfCourse?.facultyId || "");
     setEditDepartmentId(course.departmentId);
@@ -167,7 +160,6 @@ const CourseManagement: React.FC = () => {
         setLoading(false);
         return;
       }
-
       await updateCourse(id, {
         courseCode: editCourseCode,
         courseName: editCourseName,
@@ -176,11 +168,9 @@ const CourseManagement: React.FC = () => {
         departmentId: editDepartmentId,
         instructorId: editInstructorId || undefined,
       });
-      alert("Course updated successfully!");
       handleCancelEdit();
-      fetchData(); // Re-fetch all data to update lists
+      fetchData();
     } catch (err: any) {
-      console.error("Failed to update course:", err);
       setError(err.response?.data || "Failed to update course. Please check your inputs.");
     } finally {
       setLoading(false);
@@ -193,29 +183,24 @@ const CourseManagement: React.FC = () => {
     setError(null);
     try {
       await deleteCourse(id);
-      alert("Course deleted successfully!");
-      fetchData(); // Re-fetch all data
+      fetchData();
     } catch (err: any) {
-      console.error("Failed to delete course:", err);
       setError(err.response?.data || "Failed to delete course. It might be linked to existing survey submissions.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handler for new course form: when faculty selection changes
   const handleNewFacultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const facultyId = e.target.value;
-    setNewFacultyId(facultyId); // Corrected usage: using setNewFacultyId
-    setNewDepartmentId(""); // Reset department when faculty changes
-    // Automatically set the first department of the new faculty if available
+    setNewFacultyId(facultyId);
+    setNewDepartmentId("");
     const filteredDepartments = departments.filter(d => d.facultyId === facultyId);
     if (filteredDepartments.length > 0) {
       setNewDepartmentId(filteredDepartments[0].id);
     }
   };
 
-  // Handler for edit course form: when faculty selection changes
   const handleEditFacultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const facultyId = e.target.value;
     setEditFacultyId(facultyId);
@@ -226,12 +211,10 @@ const CourseManagement: React.FC = () => {
     }
   };
 
-  // Filter departments based on selected faculty for the NEW course form
   const filteredDepartmentsForNewCourse = newFacultyId
     ? departments.filter(d => d.facultyId === newFacultyId)
     : [];
 
-  // Filter departments based on selected faculty for the EDIT course form
   const filteredDepartmentsForEditCourse = editFacultyId
     ? departments.filter(d => d.facultyId === editFacultyId)
     : [];
@@ -248,33 +231,20 @@ const CourseManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center py-8">
-      <div
-        className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-6xl border"
-        style={{ borderColor: BLUE }}
-      >
-        <h1
-          className="text-2xl font-extrabold mb-8 text-center tracking-tight drop-shadow"
-          style={{ color: BLUE }}
-        >
-          Course Management
-        </h1>
-
+    <div className="min-h-screen w-full flex flex-col items-center py-10 px-2" style={{ background: BG }}>
+      <div className="w-full max-w-6xl flex flex-col items-center">
+        <h1 className="text-3xl font-bold mb-8 text-[#21409a] text-center tracking-tight">Course Management</h1>
         {/* Add Course Form */}
         <form
           onSubmit={handleCreateCourse}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 p-6 border rounded-2xl"
-          style={{ borderColor: BLUE }}
+          className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 px-4"
         >
-          <h2 className="col-span-full text-xl font-bold mb-3" style={{ color: BLUE }}>
-            Create New Course
-          </h2>
           <input
             type="text"
             placeholder="Course Code (e.g., INDE2001.1)"
             value={newCourseCode}
             onChange={(e) => setNewCourseCode(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
           />
           <input
@@ -282,7 +252,7 @@ const CourseManagement: React.FC = () => {
             placeholder="Course Name (e.g., Operations Research I)"
             value={newCourseName}
             onChange={(e) => setNewCourseName(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
           />
           <input
@@ -290,7 +260,7 @@ const CourseManagement: React.FC = () => {
             placeholder="Credits (e.g., 4)"
             value={newCredits}
             onChange={(e) => setNewCredits(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
           />
           <input
@@ -298,14 +268,14 @@ const CourseManagement: React.FC = () => {
             placeholder="Semester (e.g., FALL23)"
             value={newSemester}
             onChange={(e) => setNewSemester(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
           />
           {/* Faculty Selection for New Course */}
           <select
             value={newFacultyId}
             onChange={handleNewFacultyChange}
-            className="p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md bg-white text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
           >
             <option value="" disabled>Select Faculty</option>
@@ -315,11 +285,11 @@ const CourseManagement: React.FC = () => {
               </option>
             ))}
           </select>
-          {/* Department Selection for New Course (filtered by selected faculty) */}
+          {/* Department Selection for New Course */}
           <select
             value={newDepartmentId}
             onChange={(e) => setNewDepartmentId(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md bg-white text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
             required
             disabled={!newFacultyId || filteredDepartmentsForNewCourse.length === 0}
           >
@@ -335,12 +305,15 @@ const CourseManagement: React.FC = () => {
             placeholder="Instructor ID (Optional)"
             value={newInstructorId}
             onChange={(e) => setNewInstructorId(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
           />
           <button
             type="submit"
-            className="col-span-full w-full py-3 rounded-xl text-white font-bold text-base mt-4 shadow"
-            style={{ backgroundColor: BLUE, transition: "background 0.2s" }}
+            className="col-span-full w-full mt-2 py-2 rounded-md bg-[#21409a] hover:bg-[#18316e] text-white font-semibold text-sm shadow-md transition-all duration-150"
+            style={{
+              letterSpacing: ".03em",
+              boxShadow: `0 2.5px 8px -3px #21409a25`,
+            }}
             disabled={loading}
           >
             {loading ? "Creating..." : "Create Course"}
@@ -348,61 +321,61 @@ const CourseManagement: React.FC = () => {
         </form>
 
         {error && <div className="text-red-600 text-center mb-4">{error}</div>}
-        {loading && <div className="text-center" style={{ color: BLUE }}>Loading courses...</div>}
+        {loading && <div className="text-center text-[#21409a]">Loading courses...</div>}
         {!loading && courses.length === 0 && (
           <div className="text-center text-gray-600">No courses found.</div>
         )}
 
         {/* Course List */}
-        <div className="overflow-x-auto rounded-2xl shadow">
-          <table className="min-w-full bg-white rounded-2xl overflow-hidden text-base">
+        <div className="w-full mt-2 overflow-x-auto rounded-lg">
+          <table className="min-w-full bg-white text-sm rounded-lg">
             <thead>
               <tr>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Code</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Name</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Credits</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Semester</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Faculty</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Department</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Instructor</th>
-                <th className="py-4 px-6" style={{ backgroundColor: "#d3d3fa", color: BLUE }}>Actions</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Code</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Name</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Credits</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Semester</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Faculty</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Department</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Instructor</th>
+                <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {courses.map((course) => (
-                <tr key={course.id} className="hover:bg-blue-50 transition group">
-                  <td className="py-3 px-6 border-b border-gray-100">
+                <tr key={course.id} className="hover:bg-blue-50 transition">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <input type="text" value={editCourseCode} onChange={(e) => setEditCourseCode(e.target.value)} className="p-2 border rounded-lg text-sm w-24" />
+                      <input type="text" value={editCourseCode} onChange={(e) => setEditCourseCode(e.target.value)} className="p-1 border rounded-md text-xs w-20" />
                     ) : (
                       <span>{course.courseCode}</span>
                     )}
                   </td>
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <input type="text" value={editCourseName} onChange={(e) => setEditCourseName(e.target.value)} className="p-2 border rounded-lg text-sm w-36" />
+                      <input type="text" value={editCourseName} onChange={(e) => setEditCourseName(e.target.value)} className="p-1 border rounded-md text-xs w-36" />
                     ) : (
                       <span>{course.courseName}</span>
                     )}
                   </td>
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <input type="number" value={editCredits} onChange={(e) => setEditCredits(e.target.value)} className="p-2 border rounded-lg text-sm w-16" />
+                      <input type="number" value={editCredits} onChange={(e) => setEditCredits(e.target.value)} className="p-1 border rounded-md text-xs w-12" />
                     ) : (
                       <span>{course.credits}</span>
                     )}
                   </td>
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <input type="text" value={editSemester} onChange={(e) => setEditSemester(e.target.value)} className="p-2 border rounded-lg text-sm w-20" />
+                      <input type="text" value={editSemester} onChange={(e) => setEditSemester(e.target.value)} className="p-1 border rounded-md text-xs w-16" />
                     ) : (
                       <span>{course.semester}</span>
                     )}
                   </td>
                   {/* Faculty Display and Edit */}
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <select value={editFacultyId} onChange={handleEditFacultyChange} className="p-2 border rounded-lg text-sm">
+                      <select value={editFacultyId} onChange={handleEditFacultyChange} className="p-1 border rounded-md text-xs">
                         {faculties.map(fac => (
                           <option key={fac.id} value={fac.id}>{fac.name}</option>
                         ))}
@@ -411,10 +384,10 @@ const CourseManagement: React.FC = () => {
                       <span>{departments.find(d => d.id === course.departmentId)?.facultyName || "N/A"}</span>
                     )}
                   </td>
-                  {/* Department Display and Edit (filtered by selected faculty) */}
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  {/* Department Display and Edit */}
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <select value={editDepartmentId} onChange={(e) => setEditDepartmentId(e.target.value)} className="p-2 border rounded-lg text-sm"
+                      <select value={editDepartmentId} onChange={(e) => setEditDepartmentId(e.target.value)} className="p-1 border rounded-md text-xs"
                         disabled={!editFacultyId || filteredDepartmentsForEditCourse.length === 0}>
                         <option value="" disabled>Select Department</option>
                         {filteredDepartmentsForEditCourse.map(dep => (
@@ -427,25 +400,25 @@ const CourseManagement: React.FC = () => {
                       <span>{course.departmentName}</span>
                     )}
                   </td>
-                  <td className="py-3 px-6 border-b border-gray-100">
+                  <td className="py-2 px-4 border-b border-gray-100">
                     {editingCourseId === course.id ? (
-                      <input type="text" value={editInstructorId} onChange={(e) => setEditInstructorId(e.target.value)} className="p-2 border rounded-lg text-sm w-24" />
+                      <input type="text" value={editInstructorId} onChange={(e) => setEditInstructorId(e.target.value)} className="p-1 border rounded-md text-xs w-20" />
                     ) : (
                       <span>{course.instructorName || "N/A"}</span>
                     )}
                   </td>
-                  <td className="py-3 px-6 border-b border-gray-100 flex gap-2">
+                  <td className="py-2 px-4 border-b border-gray-100 flex gap-2">
                     {editingCourseId === course.id ? (
                       <>
                         <button
                           onClick={() => handleSaveEdit(course.id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+                          className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs"
                         >
                           Save
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
+                          className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-xs"
                         >
                           Cancel
                         </button>
@@ -454,13 +427,13 @@ const CourseManagement: React.FC = () => {
                       <>
                         <button
                           onClick={() => handleStartEdit(course)}
-                          className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm"
+                          className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-xs"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteCourse(course.id)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                          className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs"
                         >
                           Delete
                         </button>

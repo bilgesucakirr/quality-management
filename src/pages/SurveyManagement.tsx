@@ -1,13 +1,11 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   createSurvey,
   getAllSurveys,
   updateSurvey,
   deleteSurvey,
 } from "../api/SurveyService";
-import {
-  getYokakCriteriaByLevel,
-} from "../api/YokakCriterionService";
+import { getYokakCriteriaByLevel } from "../api/YokakCriterionService";
 import type {
   CreateSurveyFormRequest,
   SurveyDto,
@@ -17,9 +15,10 @@ import type {
   QuestionResponse,
 } from "../types/Survey";
 import type { YokakCriterionResponse } from "../types/YokakCriterion";
-import { useAuthStore } from "../store/AuthStore"; // Rol kontrolü için
+import { useAuthStore } from "../store/AuthStore";
 
-const BLUE = "#05058c";
+const BG = "#f8f9fb";
+const PRIMARY = "#21409a";
 
 const SurveyManagement: React.FC = () => {
   const [surveys, setSurveys] = useState<SurveyDto[]>([]);
@@ -29,7 +28,6 @@ const SurveyManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form for New Survey
   const [newSurveyTitle, setNewSurveyTitle] = useState("");
   const [newSurveyDescription, setNewSurveyDescription] = useState("");
   const [newQuestions, setNewQuestions] = useState<CreateQuestionRequest[]>([
@@ -38,7 +36,6 @@ const SurveyManagement: React.FC = () => {
   const [newQuestionHeaderId, setNewQuestionHeaderId] = useState("");
   const [newQuestionMainId, setNewQuestionMainId] = useState("");
 
-  // Form for Editing Survey
   const [editingSurveyId, setEditingSurveyId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -46,15 +43,15 @@ const SurveyManagement: React.FC = () => {
   const [editQuestionHeaderId, setEditQuestionHeaderId] = useState("");
   const [editQuestionMainId, setEditQuestionMainId] = useState("");
 
-  const { role } = useAuthStore(); // Rolü buradan al
+  const { role } = useAuthStore();
 
   useEffect(() => {
-    // Sayfa erişim kontrolü: Sadece STAFF için izin ver
-    if (role === "STAFF") { // Değişiklik burada!
+    if (role === "STAFF") {
       fetchData();
     } else {
       setError("You are not authorized to view this page.");
     }
+    // eslint-disable-next-line
   }, [role]);
 
   const fetchData = async () => {
@@ -72,8 +69,6 @@ const SurveyManagement: React.FC = () => {
       setAllMainCriteria(mainData);
       setAllSubCriteria(subData);
 
-      // Set default selected yokak criterion for new question if any exist
-      // This logic will set the default for the *first* question in the newQuestions array
       if (headerData.length > 0) {
         setNewQuestionHeaderId(headerData[0].id);
         const filteredMain = mainData.filter(m => m.parentId === headerData[0].id);
@@ -85,16 +80,15 @@ const SurveyManagement: React.FC = () => {
               { questionText: "", yokakCriterionId: filteredSub[0].id }
             ]);
           } else {
-            setNewQuestions([ { questionText: "", yokakCriterionId: "" } ]);
+            setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
           }
         } else {
-          setNewQuestions([ { questionText: "", yokakCriterionId: "" } ]);
+          setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
         }
       } else {
-        setNewQuestions([ { questionText: "", yokakCriterionId: "" } ]);
+        setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
       }
     } catch (err) {
-      console.error("Failed to fetch data:", err);
       setError("Failed to fetch surveys or YÖKAK criteria.");
     } finally {
       setLoading(false);
@@ -123,7 +117,6 @@ const SurveyManagement: React.FC = () => {
     setter(updatedList);
   };
 
-
   const handleAddQuestionField = () => {
     let defaultHeaderId = allHeaders.length > 0 ? allHeaders[0].id : "";
     let defaultMainId = "";
@@ -139,13 +132,9 @@ const SurveyManagement: React.FC = () => {
         }
       }
     }
-
     setNewQuestions([
       ...newQuestions,
-      {
-        questionText: "",
-        yokakCriterionId: defaultSubId,
-      },
+      { questionText: "", yokakCriterionId: defaultSubId }
     ]);
     setNewQuestionHeaderId(defaultHeaderId);
     setNewQuestionMainId(defaultMainId);
@@ -169,7 +158,6 @@ const SurveyManagement: React.FC = () => {
       setLoading(false);
       return;
     }
-
     try {
       const request: CreateSurveyFormRequest = {
         title: newSurveyTitle,
@@ -180,12 +168,11 @@ const SurveyManagement: React.FC = () => {
       alert("Survey created successfully!");
       setNewSurveyTitle("");
       setNewSurveyDescription("");
-      setNewQuestions([ { questionText: "", yokakCriterionId: "" } ]);
+      setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
       setNewQuestionHeaderId("");
       setNewQuestionMainId("");
       fetchData();
     } catch (err: any) {
-      console.error("Failed to create survey:", err);
       setError(err.response?.data || "Failed to create survey.");
     } finally {
       setLoading(false);
@@ -201,7 +188,6 @@ const SurveyManagement: React.FC = () => {
       alert("Survey deleted successfully!");
       fetchData();
     } catch (err: any) {
-      console.error("Failed to delete survey:", err);
       setError(err.response?.data || "Failed to delete survey. It might have associated data.");
     } finally {
       setLoading(false);
@@ -212,26 +198,21 @@ const SurveyManagement: React.FC = () => {
     setEditingSurveyId(survey.id);
     setEditTitle(survey.title);
     setEditDescription(survey.description);
-    
     const mappedQuestions = survey.questions.map((q: QuestionResponse) => {
       let headerId = "";
       let mainId = "";
-
       if (q.yokakCriterionId) {
         const subCriterion = allSubCriteria.find(s => s.id === q.yokakCriterionId);
         if (subCriterion && subCriterion.parentId) {
           const mainCriterion = allMainCriteria.find(m => m.id === subCriterion.parentId);
           if (mainCriterion) {
             mainId = mainCriterion.id;
-            if (mainCriterion.parentId) {
-              headerId = mainCriterion.parentId;
-            }
+            if (mainCriterion.parentId) headerId = mainCriterion.parentId;
           }
         }
       }
-      setEditQuestionHeaderId(headerId); 
+      setEditQuestionHeaderId(headerId);
       setEditQuestionMainId(mainId);
-
       return {
         id: q.id,
         questionText: q.questionText,
@@ -265,13 +246,9 @@ const SurveyManagement: React.FC = () => {
         }
       }
     }
-    
     setEditQuestions([
       ...editQuestions,
-      {
-        questionText: "",
-        yokakCriterionId: defaultSubId,
-      },
+      { questionText: "", yokakCriterionId: defaultSubId }
     ]);
     setEditQuestionHeaderId(defaultHeaderId);
     setEditQuestionMainId(defaultMainId);
@@ -293,7 +270,6 @@ const SurveyManagement: React.FC = () => {
       setLoading(false);
       return;
     }
-
     try {
       const request: UpdateSurveyFormRequest = {
         title: editTitle,
@@ -305,225 +281,192 @@ const SurveyManagement: React.FC = () => {
       handleCancelEdit();
       fetchData();
     } catch (err: any) {
-      console.error("Failed to update survey:", err);
       setError(err.response?.data || "Failed to update survey.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter options for chained dropdowns
-  const getFilteredMainCriteria = (headerId: string) => {
-    return allMainCriteria.filter(mc => mc.parentId === headerId);
-  };
+  const getFilteredMainCriteria = (headerId: string) => allMainCriteria.filter(mc => mc.parentId === headerId);
+  const getFilteredSubCriteria = (mainId: string) => allSubCriteria.filter(sc => sc.parentId === mainId);
 
-  const getFilteredSubCriteria = (mainId: string) => {
-    return allSubCriteria.filter(sc => sc.parentId === mainId);
-  };
-
-  // Rol kontrolü: Sadece STAFF rolü için izin ver
   if (role !== "STAFF") {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <p className="text-xl text-red-600">Access Denied.</p>
-          <p className="text-gray-600 mt-2">You do not have permission to view this page.</p>
-        </div>
+      <div className="flex items-center justify-center h-screen" style={{ background: BG }}>
+        <div className="text-xl text-gray-700">Access Denied.</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center py-8">
-      <div
-        className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-6xl border"
-        style={{ borderColor: BLUE }}
-      >
-        <h1
-          className="text-2xl font-extrabold mb-8 text-center tracking-tight drop-shadow"
-          style={{ color: BLUE }}
-        >
+    <div className="min-h-screen w-full flex flex-col items-center py-10 px-2" style={{ background: BG }}>
+      <div className="w-full max-w-6xl flex flex-col items-center">
+        <h1 className="text-3xl font-bold mb-8 text-[#21409a] text-center tracking-tight">
           Survey Management
         </h1>
 
         {/* Add Survey Form */}
         <form
           onSubmit={handleCreateSurvey}
-          className="flex flex-col gap-4 mb-10 p-6 border rounded-2xl"
-          style={{ borderColor: BLUE }}
+          className="w-full flex flex-col gap-4 mb-8 px-2"
         >
-          <h2 className="text-xl font-bold mb-3" style={{ color: BLUE }}>
-            Create New Survey
-          </h2>
-          <input
-            type="text"
-            placeholder="Survey Title"
-            value={newSurveyTitle}
-            onChange={(e) => setNewSurveyTitle(e.target.value)}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
-            required
-          />
-          <textarea
-            placeholder="Survey Description"
-            value={newSurveyDescription}
-            onChange={(e) => setNewSurveyDescription(e.target.value)}
-            rows={3}
-            className="p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
-            required
-          ></textarea>
-          <div className="flex flex-col gap-2">
-            <h3 className="font-semibold" style={{ color: BLUE }}>
-              Questions (Likert 5-scale)
-            </h3>
-            {newQuestions.map((q, index) => (
-              <div key={index} className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder={`Question ${index + 1}`}
-                  value={q.questionText}
-                  onChange={(e) => updateQuestionText(newQuestions, setNewQuestions, index, e.target.value)}
-                  className="flex-1 min-w-[150px] p-3 border border-gray-300 rounded-xl text-base focus:ring-2 focus:ring-[#05058c] outline-none transition"
-                  required
-                />
-                {/* Header Dropdown for NEW question */}
-                <select
-                  value={newQuestionHeaderId}
-                  onChange={(e) => {
-                    const selectedHeader = e.target.value;
-                    setNewQuestionHeaderId(selectedHeader);
-                    setNewQuestionMainId(""); // Reset Main
-                    updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, ""); // Reset Sub
-
-                    const filteredMain = getFilteredMainCriteria(selectedHeader);
-                    if (filteredMain.length > 0) {
-                      setNewQuestionMainId(filteredMain[0].id); // Auto-select first Main
-                      const filteredSub = getFilteredSubCriteria(filteredMain[0].id);
-                      if (filteredSub.length > 0) {
-                        updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id); // Auto-select first Sub
+          <div className="bg-white rounded-2xl border border-[#e5eaf8] p-6 shadow flex flex-col gap-4">
+            <h2 className="text-xl font-semibold mb-2" style={{ color: PRIMARY }}>
+              Create New Survey
+            </h2>
+            <input
+              type="text"
+              placeholder="Survey Title"
+              value={newSurveyTitle}
+              onChange={(e) => setNewSurveyTitle(e.target.value)}
+              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
+              required
+            />
+            <textarea
+              placeholder="Survey Description"
+              value={newSurveyDescription}
+              onChange={(e) => setNewSurveyDescription(e.target.value)}
+              rows={3}
+              className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
+              required
+            />
+            <div className="flex flex-col gap-2">
+              <h3 className="font-semibold text-sm" style={{ color: PRIMARY }}>
+                Questions (Likert 5-scale)
+              </h3>
+              {newQuestions.map((q, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder={`Question ${index + 1}`}
+                    value={q.questionText}
+                    onChange={(e) => updateQuestionText(newQuestions, setNewQuestions, index, e.target.value)}
+                    className="flex-1 min-w-[120px] p-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
+                    required
+                  />
+                  <select
+                    value={newQuestionHeaderId}
+                    onChange={(e) => {
+                      const selectedHeader = e.target.value;
+                      setNewQuestionHeaderId(selectedHeader);
+                      setNewQuestionMainId("");
+                      updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, "");
+                      const filteredMain = getFilteredMainCriteria(selectedHeader);
+                      if (filteredMain.length > 0) {
+                        setNewQuestionMainId(filteredMain[0].id);
+                        const filteredSub = getFilteredSubCriteria(filteredMain[0].id);
+                        if (filteredSub.length > 0) {
+                          updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id);
+                        }
                       }
-                    }
-                  }}
-                  className="p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#05058c] outline-none transition"
-                  required
-                  disabled={allHeaders.length === 0}
-                >
-                  <option value="" disabled>Select Header</option>
-                  {allHeaders.map(header => (
-                    <option key={header.id} value={header.id}>{header.code} - {header.name}</option>
-                  ))}
-                </select>
-
-                {/* Main Criterion Dropdown for NEW question */}
-                <select
-                  value={newQuestionMainId}
-                  onChange={(e) => {
-                    const selectedMain = e.target.value;
-                    setNewQuestionMainId(selectedMain);
-                    updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, ""); // Reset Sub
-
-                    const filteredSub = getFilteredSubCriteria(selectedMain);
-                    if (filteredSub.length > 0) {
-                      updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id); // Auto-select first Sub
-                    }
-                  }}
-                  className="p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#05058c] outline-none transition"
-                  required
-                  disabled={!newQuestionHeaderId || getFilteredMainCriteria(newQuestionHeaderId).length === 0}
-                >
-                  <option value="" disabled>Select Main Criterion</option>
-                  {getFilteredMainCriteria(newQuestionHeaderId).map(main => (
-                    <option key={main.id} value={main.id}>{main.code} - {main.name}</option>
-                  ))}
-                </select>
-
-                {/* Sub Criterion Dropdown for NEW question (Final selection) */}
-                <select
-                  value={q.yokakCriterionId}
-                  onChange={(e) => updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, e.target.value)}
-                  className="p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#05058c] outline-none transition"
-                  required
-                  disabled={!newQuestionMainId || getFilteredSubCriteria(newQuestionMainId).length === 0}
-                >
-                  <option value="" disabled>Select Sub Criterion</option>
-                  {getFilteredSubCriteria(newQuestionMainId).map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.code} - {sub.name}</option>
-                  ))}
-                </select>
-                {newQuestions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveQuestionField(index)}
-                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                    }}
+                    className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
+                    required
+                    disabled={allHeaders.length === 0}
                   >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
+                    <option value="" disabled>Select Header</option>
+                    {allHeaders.map(header => (
+                      <option key={header.id} value={header.id}>{header.code} - {header.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={newQuestionMainId}
+                    onChange={(e) => {
+                      const selectedMain = e.target.value;
+                      setNewQuestionMainId(selectedMain);
+                      updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, "");
+                      const filteredSub = getFilteredSubCriteria(selectedMain);
+                      if (filteredSub.length > 0) {
+                        updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id);
+                      }
+                    }}
+                    className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
+                    required
+                    disabled={!newQuestionHeaderId || getFilteredMainCriteria(newQuestionHeaderId).length === 0}
+                  >
+                    <option value="" disabled>Select Main Criterion</option>
+                    {getFilteredMainCriteria(newQuestionHeaderId).map(main => (
+                      <option key={main.id} value={main.id}>{main.code} - {main.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={q.yokakCriterionId}
+                    onChange={(e) => updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, e.target.value)}
+                    className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
+                    required
+                    disabled={!newQuestionMainId || getFilteredSubCriteria(newQuestionMainId).length === 0}
+                  >
+                    <option value="" disabled>Select Sub Criterion</option>
+                    {getFilteredSubCriteria(newQuestionMainId).map(sub => (
+                      <option key={sub.id} value={sub.id}>{sub.code} - {sub.name}</option>
+                    ))}
+                  </select>
+                  {newQuestions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQuestionField(index)}
+                      className="px-3 py-1.5 bg-red-500 text-white rounded-lg font-semibold text-xs shadow hover:bg-red-600 transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={handleAddQuestionField}
+                className="self-start mt-2 px-4 py-1.5 bg-gray-100 text-[#21409a] rounded-lg font-semibold text-xs hover:bg-gray-200 transition"
+              >
+                Add another question
+              </button>
+            </div>
             <button
-              type="button"
-              onClick={handleAddQuestionField}
-              className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              type="submit"
+              className="self-end mt-2 px-7 py-2 rounded-lg bg-[#21409a] hover:bg-[#18316e] text-white font-bold text-base shadow-md transition-all duration-150"
+              style={{ letterSpacing: ".03em" }}
+              disabled={loading}
             >
-              Add another question
+              {loading ? "Creating..." : "Create Survey"}
             </button>
+            {error && <div className="text-red-600 text-center mt-2 text-sm">{error}</div>}
           </div>
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl text-white font-bold text-base mt-4 shadow"
-            style={{ backgroundColor: BLUE, transition: "background 0.2s" }}
-            disabled={loading}
-          >
-            {loading ? "Creating..." : "Create Survey"}
-          </button>
         </form>
 
         {/* Survey List */}
-        <h2 className="text-2xl font-extrabold mb-6" style={{ color: BLUE }}>
-          Existing Surveys
-        </h2>
-        {error && <div className="text-red-600 text-center mb-4">{error}</div>}
-        {loading && <div className="text-center" style={{ color: BLUE }}>Loading surveys...</div>}
+        <h2 className="text-2xl font-bold mb-4 mt-8 text-[#21409a]">Existing Surveys</h2>
+        {loading && <div className="text-center text-[#21409a]">Loading surveys...</div>}
         {!loading && surveys.length === 0 && (
           <div className="text-center text-gray-600">No surveys found.</div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {surveys.map((survey) => (
             <div
               key={survey.id}
-              className="bg-white rounded-xl shadow-md p-6 border flex flex-col justify-between"
-              style={{ borderColor: BLUE }}
+              className="bg-white rounded-2xl border border-[#e5eaf8] p-5 flex flex-col gap-2 shadow"
             >
               {editingSurveyId === survey.id ? (
-                // Edit Form
                 <>
                   <input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full p-2 border rounded-lg mb-2 text-lg font-bold"
+                    className="w-full p-2 border rounded-lg mb-2 text-base font-semibold"
                   />
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={2}
-                    className="w-full p-2 border rounded-lg mb-4 text-gray-600"
+                    className="w-full p-2 border rounded-lg mb-2 text-base"
                   ></textarea>
-                  <h3 className="font-semibold mb-2" style={{ color: BLUE }}>
-                    Questions:
-                  </h3>
+                  <h3 className="font-semibold text-sm mb-1" style={{ color: PRIMARY }}>Questions:</h3>
                   {editQuestions.map((q, index) => (
-                    <div
-                      key={q.id || `new-${index}`}
-                      className="flex flex-wrap items-center gap-2 mb-2"
-                    >
+                    <div key={q.id || `edit-q-${index}`} className="flex flex-wrap items-center gap-2 mb-1">
                       <input
                         type="text"
                         value={q.questionText}
                         onChange={(e) => updateQuestionText(editQuestions, setEditQuestions, index, e.target.value)}
-                        className="flex-1 min-w-[120px] p-2 border rounded-lg text-sm"
+                        className="flex-1 min-w-[120px] p-2 border rounded-lg text-xs"
                       />
-                      {/* Header Dropdown (Edit Mode) */}
                       <select
                         value={editQuestionHeaderId}
                         onChange={(e) => {
@@ -540,7 +483,7 @@ const SurveyManagement: React.FC = () => {
                             }
                           }
                         }}
-                        className="p-2 border rounded-lg bg-white text-sm"
+                        className="p-2 border rounded-lg bg-white text-xs"
                         required
                         disabled={allHeaders.length === 0}
                       >
@@ -549,8 +492,6 @@ const SurveyManagement: React.FC = () => {
                           <option key={header.id} value={header.id}>{header.code} - {header.name}</option>
                         ))}
                       </select>
-
-                      {/* Main Criterion Dropdown (Edit Mode) */}
                       <select
                         value={editQuestionMainId}
                         onChange={(e) => {
@@ -562,7 +503,7 @@ const SurveyManagement: React.FC = () => {
                             updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, filteredSub[0].id);
                           }
                         }}
-                        className="p-2 border rounded-lg bg-white text-sm"
+                        className="p-2 border rounded-lg bg-white text-xs"
                         required
                         disabled={!editQuestionHeaderId || getFilteredMainCriteria(editQuestionHeaderId).length === 0}
                       >
@@ -571,12 +512,10 @@ const SurveyManagement: React.FC = () => {
                           <option key={main.id} value={main.id}>{main.code} - {main.name}</option>
                         ))}
                       </select>
-
-                      {/* Sub Criterion Dropdown (Edit Mode - Final selection) */}
                       <select
                         value={q.yokakCriterionId}
                         onChange={(e) => updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, e.target.value)}
-                        className="p-2 border rounded-lg bg-white text-sm"
+                        className="p-2 border rounded-lg bg-white text-xs"
                         required
                         disabled={!editQuestionMainId || getFilteredSubCriteria(editQuestionMainId).length === 0}
                       >
@@ -589,7 +528,7 @@ const SurveyManagement: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleRemoveEditQuestionField(index)}
-                          className="p-1 bg-red-400 text-white rounded-md hover:bg-red-500 transition text-sm"
+                          className="px-3 py-1.5 bg-red-500 text-white rounded-lg font-semibold text-xs shadow hover:bg-red-600 transition"
                         >
                           -
                         </button>
@@ -599,21 +538,21 @@ const SurveyManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleAddEditQuestionField}
-                    className="mt-2 px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    className="self-start mt-2 px-4 py-1.5 bg-gray-100 text-[#21409a] rounded-lg font-semibold text-xs hover:bg-gray-200 transition"
                   >
                     Add question
                   </button>
                   <div className="flex gap-2 mt-4">
                     <button
                       onClick={() => handleSaveEdit(survey.id)}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm shadow hover:bg-green-700 transition"
                       disabled={loading}
                     >
                       Save
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                      className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg font-bold text-sm shadow hover:bg-gray-600 transition"
                       disabled={loading}
                     >
                       Cancel
@@ -621,23 +560,18 @@ const SurveyManagement: React.FC = () => {
                   </div>
                 </>
               ) : (
-                // Display Mode
                 <>
-                  <h3 className="text-xl font-bold mb-2" style={{ color: BLUE }}>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: PRIMARY }}>
                     {survey.title}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    {survey.description}
-                  </p>
-                  <h4 className="font-semibold text-sm mb-2" style={{ color: BLUE }}>
-                    Questions:
-                  </h4>
-                  <ul className="list-disc list-inside text-sm text-gray-700 mb-4">
+                  <p className="text-gray-600 text-sm mb-2">{survey.description}</p>
+                  <h4 className="font-semibold text-xs mb-1" style={{ color: PRIMARY }}>Questions:</h4>
+                  <ul className="list-disc list-inside text-xs text-gray-700 mb-2">
                     {survey.questions.map((question) => (
                       <li key={question.id}>
                         {question.questionText}{" "}
                         {question.yokakCriterionCode && (
-                          <span className="font-semibold" style={{ color: BLUE }}>
+                          <span className="font-semibold" style={{ color: PRIMARY }}>
                             ({question.yokakCriterionCode})
                           </span>
                         )}
@@ -647,13 +581,13 @@ const SurveyManagement: React.FC = () => {
                   <div className="flex gap-2 justify-end mt-auto">
                     <button
                       onClick={() => handleStartEdit(survey)}
-                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+                      className="px-3 py-1.5 bg-yellow-500 text-white rounded-lg font-semibold text-xs shadow hover:bg-yellow-600 transition"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteSurvey(survey.id)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold text-xs shadow hover:bg-red-700 transition"
                     >
                       Delete
                     </button>
