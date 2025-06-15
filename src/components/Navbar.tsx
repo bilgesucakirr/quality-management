@@ -1,11 +1,11 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/AuthStore";
-import { LogOut, LayoutDashboard, Users, ClipboardList, BookOpen, ListTree } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, ClipboardList, BookOpen, ListTree, BarChart2, FileText, Building, GitFork } from "lucide-react";
 import isikUniversityLogo from "/i.u_logo-blue-en.png";
+import { useAuthStore } from "../store/AuthStore"; // FIX: Added useAuthStore import
 
 const BG = "#f8f9fb";
-const PRIMARY = "#21409a";
+// const PRIMARY = "#21409a"; // REMOVED: No longer used, removed to clear 'never read' warning
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +15,9 @@ const Navbar: React.FC = () => {
     clearToken();
     navigate("/login");
   };
+
+  const canViewAnalysis = role && ["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role);
+  const canManageSubmissions = role && ["ADMIN", "STAFF"].includes(role);
 
   return (
     <nav
@@ -58,6 +61,18 @@ const Navbar: React.FC = () => {
             >
               <BookOpen size={18} /> Course Management
             </Link>
+            <Link
+              to="/faculty-management"
+              className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
+            >
+              <Building size={18} /> Faculty Management
+            </Link>
+            <Link
+              to="/department-management"
+              className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
+            >
+              <GitFork size={18} /> Department Management
+            </Link>
           </>
         )}
         {role === "STAFF" && (
@@ -83,6 +98,22 @@ const Navbar: React.FC = () => {
             </Link>
           </>
         )}
+        {canViewAnalysis && (
+          <Link
+            to="/analysis"
+            className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
+          >
+            <BarChart2 size={18} /> Analysis
+          </Link>
+        )}
+        {canManageSubmissions && (
+          <Link
+            to="/survey-submissions"
+            className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
+          >
+            <FileText size={18} /> Submissions
+          </Link>
+        )}
       </div>
 
       {/* Session Management */}
@@ -101,6 +132,9 @@ const Navbar: React.FC = () => {
           <Link
             to="/login"
             className="px-4 py-1 rounded-md font-semibold text-xs bg-[#21409a] hover:bg-[#18316e] text-white transition"
+            style={{
+              letterSpacing: ".02em",
+            }}
           >
             Login
           </Link>

@@ -13,12 +13,15 @@ import type {
   CreateQuestionRequest,
   UpdateQuestionRequest,
   QuestionResponse,
+  QuestionFormState,
 } from "../types/Survey";
 import type { YokakCriterionResponse } from "../types/YokakCriterion";
 import { useAuthStore } from "../store/AuthStore";
 
 const BG = "#f8f9fb";
 const PRIMARY = "#21409a";
+
+type CriterionLevel = "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION"; // Re-defined here for clarity
 
 const SurveyManagement: React.FC = () => {
   const [surveys, setSurveys] = useState<SurveyDto[]>([]);
@@ -30,29 +33,16 @@ const SurveyManagement: React.FC = () => {
 
   const [newSurveyTitle, setNewSurveyTitle] = useState("");
   const [newSurveyDescription, setNewSurveyDescription] = useState("");
-  const [newQuestions, setNewQuestions] = useState<CreateQuestionRequest[]>([
-    { questionText: "", yokakCriterionId: "" }
+  const [newQuestions, setNewQuestions] = useState<QuestionFormState[]>([
+    { questionText: "", selectedHeaderId: "", selectedMainCriterionId: "", yokakCriterionId: "" }
   ]);
-  const [newQuestionHeaderId, setNewQuestionHeaderId] = useState("");
-  const [newQuestionMainId, setNewQuestionMainId] = useState("");
 
   const [editingSurveyId, setEditingSurveyId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editQuestions, setEditQuestions] = useState<UpdateQuestionRequest[]>([]);
-  const [editQuestionHeaderId, setEditQuestionHeaderId] = useState("");
-  const [editQuestionMainId, setEditQuestionMainId] = useState("");
+  const [editQuestions, setEditQuestions] = useState<QuestionFormState[]>([]);
 
   const { role } = useAuthStore();
-
-  useEffect(() => {
-    if (role === "STAFF") {
-      fetchData();
-    } else {
-      setError("You are not authorized to view this page.");
-    }
-    // eslint-disable-next-line
-  }, [role]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -69,25 +59,8 @@ const SurveyManagement: React.FC = () => {
       setAllMainCriteria(mainData);
       setAllSubCriteria(subData);
 
-      if (headerData.length > 0) {
-        setNewQuestionHeaderId(headerData[0].id);
-        const filteredMain = mainData.filter(m => m.parentId === headerData[0].id);
-        if (filteredMain.length > 0) {
-          setNewQuestionMainId(filteredMain[0].id);
-          const filteredSub = subData.filter(s => s.parentId === filteredMain[0].id);
-          if (filteredSub.length > 0) {
-            setNewQuestions([
-              { questionText: "", yokakCriterionId: filteredSub[0].id }
-            ]);
-          } else {
-            setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
-          }
-        } else {
-          setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
-        }
-      } else {
-        setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
-      }
+      setNewQuestions([getDefaultQuestionFormState(headerData, mainData, subData)]);
+
     } catch (err) {
       setError("Failed to fetch surveys or YÖKAK criteria.");
     } finally {
@@ -95,49 +68,59 @@ const SurveyManagement: React.FC = () => {
     }
   };
 
-  const updateQuestionText = (
-    list: CreateQuestionRequest[] | UpdateQuestionRequest[],
-    setter: React.Dispatch<React.SetStateAction<any>>,
-    index: number,
-    value: string
-  ) => {
-    const updatedList = [...list];
-    updatedList[index].questionText = value;
-    setter(updatedList);
-  };
-
-  const updateQuestionYokakCriterionId = (
-    list: CreateQuestionRequest[] | UpdateQuestionRequest[],
-    setter: React.Dispatch<React.SetStateAction<any>>,
-    index: number,
-    value: string
-  ) => {
-    const updatedList = [...list];
-    updatedList[index].yokakCriterionId = value;
-    setter(updatedList);
-  };
-
-  const handleAddQuestionField = () => {
-    let defaultHeaderId = allHeaders.length > 0 ? allHeaders[0].id : "";
+  const getDefaultQuestionFormState = (
+    headers: YokakCriterionResponse[],
+    mainCriteria: YokakCriterionResponse[],
+    subCriteria: YokakCriterionResponse[]
+  ): QuestionFormState => {
+    let defaultHeaderId = headers.length > 0 ? headers[0].id : "";
     let defaultMainId = "";
     let defaultSubId = "";
 
     if (defaultHeaderId) {
-      const filteredMain = allMainCriteria.filter(m => m.parentId === defaultHeaderId);
+      const filteredMain = mainCriteria.filter(m => m.parentId === defaultHeaderId);
       if (filteredMain.length > 0) {
         defaultMainId = filteredMain[0].id;
-        const filteredSub = allSubCriteria.filter(s => s.parentId === defaultMainId);
+        const filteredSub = subCriteria.filter(s => s.parentId === defaultMainId);
         if (filteredSub.length > 0) {
           defaultSubId = filteredSub[0].id;
         }
       }
     }
+    return {
+      questionText: "",
+      selectedHeaderId: defaultHeaderId,
+      selectedMainCriterionId: defaultMainId,
+      yokakCriterionId: defaultSubId,
+    };
+  };
+
+  useEffect(() => {
+    if (role === "STAFF") {
+      fetchData();
+    } else {
+      setError("You are not authorized to view this page.");
+    }
+    // eslint-disable-next-line
+  }, [role]);
+
+  const updateQuestionField = (
+    list: QuestionFormState[],
+    setter: React.Dispatch<React.SetStateAction<any>>,
+    index: number,
+    field: keyof QuestionFormState,
+    value: string
+  ) => {
+    const updatedList = [...list];
+    (updatedList[index] as any)[field] = value;
+    setter(updatedList);
+  };
+
+  const handleAddQuestionField = () => {
     setNewQuestions([
       ...newQuestions,
-      { questionText: "", yokakCriterionId: defaultSubId }
+      getDefaultQuestionFormState(allHeaders, allMainCriteria, allSubCriteria),
     ]);
-    setNewQuestionHeaderId(defaultHeaderId);
-    setNewQuestionMainId(defaultMainId);
   };
 
   const handleRemoveQuestionField = (index: number) => {
@@ -145,12 +128,42 @@ const SurveyManagement: React.FC = () => {
     setNewQuestions(updatedQuestions);
   };
 
+  const handleNewQuestionHeaderChange = (index: number, value: string) => {
+    updateQuestionField(newQuestions, setNewQuestions, index, "selectedHeaderId", value);
+    updateQuestionField(newQuestions, setNewQuestions, index, "selectedMainCriterionId", "");
+    updateQuestionField(newQuestions, setNewQuestions, index, "yokakCriterionId", "");
+
+    const filteredMain = allMainCriteria.filter(m => m.parentId === value);
+    if (filteredMain.length > 0) {
+      updateQuestionField(newQuestions, setNewQuestions, index, "selectedMainCriterionId", filteredMain[0].id);
+      const filteredSub = allSubCriteria.filter(s => s.parentId === filteredMain[0].id);
+      if (filteredSub.length > 0) {
+        updateQuestionField(newQuestions, setNewQuestions, index, "yokakCriterionId", filteredSub[0].id);
+      }
+    }
+  };
+
+  const handleNewQuestionMainChange = (index: number, value: string) => {
+    updateQuestionField(newQuestions, setNewQuestions, index, "selectedMainCriterionId", value);
+    updateQuestionField(newQuestions, setNewQuestions, index, "yokakCriterionId", "");
+
+    const filteredSub = allSubCriteria.filter(s => s.parentId === value);
+    if (filteredSub.length > 0) {
+      updateQuestionField(newQuestions, setNewQuestions, index, "yokakCriterionId", filteredSub[0].id);
+    }
+  };
+
   const handleCreateSurvey = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const validQuestions = newQuestions.filter(
+    const questionsForBackend: CreateQuestionRequest[] = newQuestions.map(q => ({
+      questionText: q.questionText,
+      yokakCriterionId: q.yokakCriterionId,
+    }));
+
+    const validQuestions = questionsForBackend.filter(
       (q) => q.questionText.trim() !== "" && q.yokakCriterionId.trim() !== ""
     );
     if (validQuestions.length === 0) {
@@ -168,12 +181,11 @@ const SurveyManagement: React.FC = () => {
       alert("Survey created successfully!");
       setNewSurveyTitle("");
       setNewSurveyDescription("");
-      setNewQuestions([{ questionText: "", yokakCriterionId: "" }]);
-      setNewQuestionHeaderId("");
-      setNewQuestionMainId("");
+      setNewQuestions([getDefaultQuestionFormState(allHeaders, allMainCriteria, allSubCriteria)]);
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data || "Failed to create survey.");
+      // NEW: Ensure error message is a string for React rendering
+      setError(err.response?.data?.message || err.message || "Failed to create survey.");
     } finally {
       setLoading(false);
     }
@@ -188,7 +200,8 @@ const SurveyManagement: React.FC = () => {
       alert("Survey deleted successfully!");
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data || "Failed to delete survey. It might have associated data.");
+      // NEW: Ensure error message is a string for React rendering
+      setError(err.response?.data?.message || err.message || "Failed to delete survey. It might have associated data.");
     } finally {
       setLoading(false);
     }
@@ -198,26 +211,27 @@ const SurveyManagement: React.FC = () => {
     setEditingSurveyId(survey.id);
     setEditTitle(survey.title);
     setEditDescription(survey.description);
-    const mappedQuestions = survey.questions.map((q: QuestionResponse) => {
-      let headerId = "";
-      let mainId = "";
-      if (q.yokakCriterionId) {
+    
+    const mappedQuestions: QuestionFormState[] = survey.questions.map((q: QuestionResponse) => {
+        let selectedHeaderId = "";
+        let selectedMainCriterionId = "";
+        
         const subCriterion = allSubCriteria.find(s => s.id === q.yokakCriterionId);
         if (subCriterion && subCriterion.parentId) {
-          const mainCriterion = allMainCriteria.find(m => m.id === subCriterion.parentId);
-          if (mainCriterion) {
-            mainId = mainCriterion.id;
-            if (mainCriterion.parentId) headerId = mainCriterion.parentId;
-          }
+            selectedMainCriterionId = subCriterion.parentId;
+            const mainCriterion = allMainCriteria.find(m => m.id === selectedMainCriterionId);
+            if (mainCriterion && mainCriterion.parentId) {
+                selectedHeaderId = mainCriterion.parentId;
+            }
         }
-      }
-      setEditQuestionHeaderId(headerId);
-      setEditQuestionMainId(mainId);
-      return {
-        id: q.id,
-        questionText: q.questionText,
-        yokakCriterionId: q.yokakCriterionId || "",
-      };
+
+        return {
+            id: q.id,
+            questionText: q.questionText,
+            selectedHeaderId: selectedHeaderId,
+            selectedMainCriterionId: selectedMainCriterionId,
+            yokakCriterionId: q.yokakCriterionId || "",
+        };
     });
     setEditQuestions(mappedQuestions);
   };
@@ -227,31 +241,13 @@ const SurveyManagement: React.FC = () => {
     setEditTitle("");
     setEditDescription("");
     setEditQuestions([]);
-    setEditQuestionHeaderId("");
-    setEditQuestionMainId("");
   };
 
   const handleAddEditQuestionField = () => {
-    let defaultHeaderId = allHeaders.length > 0 ? allHeaders[0].id : "";
-    let defaultMainId = "";
-    let defaultSubId = "";
-
-    if (defaultHeaderId) {
-      const filteredMain = allMainCriteria.filter(m => m.parentId === defaultHeaderId);
-      if (filteredMain.length > 0) {
-        defaultMainId = filteredMain[0].id;
-        const filteredSub = allSubCriteria.filter(s => s.parentId === defaultMainId);
-        if (filteredSub.length > 0) {
-          defaultSubId = filteredSub[0].id;
-        }
-      }
-    }
     setEditQuestions([
       ...editQuestions,
-      { questionText: "", yokakCriterionId: defaultSubId }
+      getDefaultQuestionFormState(allHeaders, allMainCriteria, allSubCriteria),
     ]);
-    setEditQuestionHeaderId(defaultHeaderId);
-    setEditQuestionMainId(defaultMainId);
   };
 
   const handleRemoveEditQuestionField = (index: number) => {
@@ -259,10 +255,42 @@ const SurveyManagement: React.FC = () => {
     setEditQuestions(updatedQuestions);
   };
 
+  const handleEditQuestionHeaderChange = (index: number, value: string) => {
+    updateQuestionField(editQuestions, setEditQuestions, index, "selectedHeaderId", value);
+    updateQuestionField(editQuestions, setEditQuestions, index, "selectedMainCriterionId", "");
+    updateQuestionField(editQuestions, setEditQuestions, index, "yokakCriterionId", "");
+
+    const filteredMain = allMainCriteria.filter(m => m.parentId === value);
+    if (filteredMain.length > 0) {
+      updateQuestionField(editQuestions, setEditQuestions, index, "selectedMainCriterionId", filteredMain[0].id);
+      const filteredSub = allSubCriteria.filter(s => s.parentId === filteredMain[0].id);
+      if (filteredSub.length > 0) {
+        updateQuestionField(editQuestions, setEditQuestions, index, "yokakCriterionId", filteredSub[0].id);
+      }
+    }
+  };
+
+  const handleEditQuestionMainChange = (index: number, value: string) => {
+    updateQuestionField(editQuestions, setEditQuestions, index, "selectedMainCriterionId", value);
+    updateQuestionField(editQuestions, setEditQuestions, index, "yokakCriterionId", "");
+
+    const filteredSub = allSubCriteria.filter(s => s.parentId === value);
+    if (filteredSub.length > 0) {
+      updateQuestionField(editQuestions, setEditQuestions, index, "yokakCriterionId", filteredSub[0].id);
+    }
+  };
+
   const handleSaveEdit = async (id: string) => {
     setLoading(true);
     setError(null);
-    const validQuestions = editQuestions.filter(
+    
+    const questionsForBackend: UpdateQuestionRequest[] = editQuestions.map(q => ({
+        id: q.id,
+        questionText: q.questionText,
+        yokakCriterionId: q.yokakCriterionId,
+    }));
+
+    const validQuestions = questionsForBackend.filter(
       (q) => q.questionText.trim() !== "" && q.yokakCriterionId.trim() !== ""
     );
     if (validQuestions.length === 0) {
@@ -281,7 +309,8 @@ const SurveyManagement: React.FC = () => {
       handleCancelEdit();
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data || "Failed to update survey.");
+      // NEW: Ensure error message is a string for React rendering
+      setError(err.response?.data?.message || err.message || "Failed to update survey.");
     } finally {
       setLoading(false);
     }
@@ -305,7 +334,6 @@ const SurveyManagement: React.FC = () => {
           Survey Management
         </h1>
 
-        {/* Add Survey Form */}
         <form
           onSubmit={handleCreateSurvey}
           className="w-full flex flex-col gap-4 mb-8 px-2"
@@ -340,26 +368,13 @@ const SurveyManagement: React.FC = () => {
                     type="text"
                     placeholder={`Question ${index + 1}`}
                     value={q.questionText}
-                    onChange={(e) => updateQuestionText(newQuestions, setNewQuestions, index, e.target.value)}
+                    onChange={(e) => updateQuestionField(newQuestions, setNewQuestions, index, "questionText", e.target.value)}
                     className="flex-1 min-w-[120px] p-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
                     required
                   />
                   <select
-                    value={newQuestionHeaderId}
-                    onChange={(e) => {
-                      const selectedHeader = e.target.value;
-                      setNewQuestionHeaderId(selectedHeader);
-                      setNewQuestionMainId("");
-                      updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, "");
-                      const filteredMain = getFilteredMainCriteria(selectedHeader);
-                      if (filteredMain.length > 0) {
-                        setNewQuestionMainId(filteredMain[0].id);
-                        const filteredSub = getFilteredSubCriteria(filteredMain[0].id);
-                        if (filteredSub.length > 0) {
-                          updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id);
-                        }
-                      }
-                    }}
+                    value={q.selectedHeaderId}
+                    onChange={(e) => handleNewQuestionHeaderChange(index, e.target.value)}
                     className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
                     required
                     disabled={allHeaders.length === 0}
@@ -370,34 +385,26 @@ const SurveyManagement: React.FC = () => {
                     ))}
                   </select>
                   <select
-                    value={newQuestionMainId}
-                    onChange={(e) => {
-                      const selectedMain = e.target.value;
-                      setNewQuestionMainId(selectedMain);
-                      updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, "");
-                      const filteredSub = getFilteredSubCriteria(selectedMain);
-                      if (filteredSub.length > 0) {
-                        updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, filteredSub[0].id);
-                      }
-                    }}
+                    value={q.selectedMainCriterionId}
+                    onChange={(e) => handleNewQuestionMainChange(index, e.target.value)}
                     className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
                     required
-                    disabled={!newQuestionHeaderId || getFilteredMainCriteria(newQuestionHeaderId).length === 0}
+                    disabled={!q.selectedHeaderId || getFilteredMainCriteria(q.selectedHeaderId).length === 0}
                   >
                     <option value="" disabled>Select Main Criterion</option>
-                    {getFilteredMainCriteria(newQuestionHeaderId).map(main => (
+                    {getFilteredMainCriteria(q.selectedHeaderId).map(main => (
                       <option key={main.id} value={main.id}>{main.code} - {main.name}</option>
                     ))}
                   </select>
                   <select
                     value={q.yokakCriterionId}
-                    onChange={(e) => updateQuestionYokakCriterionId(newQuestions, setNewQuestions, index, e.target.value)}
+                    onChange={(e) => updateQuestionField(newQuestions, setNewQuestions, index, "yokakCriterionId", e.target.value)}
                     className="p-2 border border-gray-300 rounded-lg bg-white text-xs focus:ring-2 focus:ring-[#21409a] outline-none transition"
                     required
-                    disabled={!newQuestionMainId || getFilteredSubCriteria(newQuestionMainId).length === 0}
+                    disabled={!q.selectedMainCriterionId || getFilteredSubCriteria(q.selectedMainCriterionId).length === 0}
                   >
                     <option value="" disabled>Select Sub Criterion</option>
-                    {getFilteredSubCriteria(newQuestionMainId).map(sub => (
+                    {getFilteredSubCriteria(q.selectedMainCriterionId).map(sub => (
                       <option key={sub.id} value={sub.id}>{sub.code} - {sub.name}</option>
                     ))}
                   </select>
@@ -464,25 +471,12 @@ const SurveyManagement: React.FC = () => {
                       <input
                         type="text"
                         value={q.questionText}
-                        onChange={(e) => updateQuestionText(editQuestions, setEditQuestions, index, e.target.value)}
+                        onChange={(e) => updateQuestionField(editQuestions, setEditQuestions, index, "questionText", e.target.value)}
                         className="flex-1 min-w-[120px] p-2 border rounded-lg text-xs"
                       />
                       <select
-                        value={editQuestionHeaderId}
-                        onChange={(e) => {
-                          const selectedHeader = e.target.value;
-                          setEditQuestionHeaderId(selectedHeader);
-                          setEditQuestionMainId("");
-                          updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, "");
-                          const filteredMain = getFilteredMainCriteria(selectedHeader);
-                          if (filteredMain.length > 0) {
-                            setEditQuestionMainId(filteredMain[0].id);
-                            const filteredSub = getFilteredSubCriteria(filteredMain[0].id);
-                            if (filteredSub.length > 0) {
-                              updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, filteredSub[0].id);
-                            }
-                          }
-                        }}
+                        value={q.selectedHeaderId}
+                        onChange={(e) => handleEditQuestionHeaderChange(index, e.target.value)}
                         className="p-2 border rounded-lg bg-white text-xs"
                         required
                         disabled={allHeaders.length === 0}
@@ -493,34 +487,26 @@ const SurveyManagement: React.FC = () => {
                         ))}
                       </select>
                       <select
-                        value={editQuestionMainId}
-                        onChange={(e) => {
-                          const selectedMain = e.target.value;
-                          setEditQuestionMainId(selectedMain);
-                          updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, "");
-                          const filteredSub = getFilteredSubCriteria(selectedMain);
-                          if (filteredSub.length > 0) {
-                            updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, filteredSub[0].id);
-                          }
-                        }}
+                        value={q.selectedMainCriterionId}
+                        onChange={(e) => handleEditQuestionMainChange(index, e.target.value)}
                         className="p-2 border rounded-lg bg-white text-xs"
                         required
-                        disabled={!editQuestionHeaderId || getFilteredMainCriteria(editQuestionHeaderId).length === 0}
+                        disabled={!q.selectedHeaderId || getFilteredMainCriteria(q.selectedHeaderId).length === 0}
                       >
                         <option value="" disabled>Select Main Criterion</option>
-                        {getFilteredMainCriteria(editQuestionHeaderId).map(main => (
+                        {getFilteredMainCriteria(q.selectedHeaderId).map(main => (
                           <option key={main.id} value={main.id}>{main.code} - {main.name}</option>
                         ))}
                       </select>
                       <select
                         value={q.yokakCriterionId}
-                        onChange={(e) => updateQuestionYokakCriterionId(editQuestions, setEditQuestions, index, e.target.value)}
+                        onChange={(e) => updateQuestionField(editQuestions, setEditQuestions, index, "yokakCriterionId", e.target.value)}
                         className="p-2 border rounded-lg bg-white text-xs"
                         required
-                        disabled={!editQuestionMainId || getFilteredSubCriteria(editQuestionMainId).length === 0}
+                        disabled={!q.selectedMainCriterionId || getFilteredSubCriteria(q.selectedMainCriterionId).length === 0}
                       >
                         <option value="" disabled>Select Sub Criterion</option>
-                        {getFilteredSubCriteria(editQuestionMainId).map(sub => (
+                        {getFilteredSubCriteria(q.selectedMainCriterionId).map(sub => (
                           <option key={sub.id} value={sub.id}>{sub.code} - {sub.name}</option>
                         ))}
                       </select>

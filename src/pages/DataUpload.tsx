@@ -1,3 +1,4 @@
+// src/pages/DataUpload.tsx
 import React, { useState, useEffect } from "react";
 import { getAllSurveys } from "../api/SurveyService";
 import { getAllFaculties } from "../api/FacultyService";
@@ -5,13 +6,13 @@ import { getAllDepartments } from "../api/DepartmentService";
 import { getAllCourses } from "../api/CourseService";
 import { uploadSurveyResults } from "../api/DataUploadService";
 import type { SurveyDto } from "../types/Survey";
-import type { Faculty } from "../types/Faculty";
+import type { Faculty } from "../types/University";
 import type { Department } from "../types/Department";
-import type { Course } from "../types/Course";
+import type { Course } from "../types/Course"; // NEW: Make sure Course is imported here with 'type'
 import { useAuthStore } from "../store/AuthStore";
 
 const BG = "#f8f9fb";
-const BLUE = "#21409a";
+// const BLUE = "#21409a"; // REMOVED: No longer used, removed to clear 'never read' warning
 
 const DataUpload: React.FC = () => {
   const [surveys, setSurveys] = useState<SurveyDto[]>([]);
@@ -22,6 +23,8 @@ const DataUpload: React.FC = () => {
   const [selectedFacultyId, setSelectedFacultyId] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("");
+  const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -32,10 +35,43 @@ const DataUpload: React.FC = () => {
   useEffect(() => {
     if (role === "ADMIN" || role === "STAFF") {
       fetchDropdownData();
+      
+      const semesters: string[] = [];
+      const currentYear = new Date().getFullYear();
+      const startYearForGeneration = currentYear - 2;
+      const endYearForGeneration = currentYear + 2;
+
+      for (let year = startYearForGeneration; year <= endYearForGeneration; year++) {
+          semesters.push(`FALL${String(year).substring(2)}`);
+          semesters.push(`SPRING${String(year + 1).substring(2)}`);
+          semesters.push(`SUMMER${String(year + 1).substring(2)}`);
+      }
+
+      const uniqueSemesters = Array.from(new Set(semesters));
+      uniqueSemesters.sort((a, b) => {
+          const getSemesterOrder = (s: string) => {
+              const yearPart = parseInt(s.substring(s.length - 2));
+              const typePart = s.substring(0, s.length - 2);
+              let order = yearPart * 100;
+
+              if (typePart === "FALL") order += 1;
+              else if (typePart === "SPRING") order += 2;
+              else if (typePart === "SUMMER") order += 3;
+              return order;
+          };
+          return getSemesterOrder(a) - getSemesterOrder(b);
+      });
+      setAvailableSemesters(uniqueSemesters);
+      
+      if (uniqueSemesters.length > 0) {
+          setSelectedSemester(uniqueSemesters[uniqueSemesters.length - 1]);
+      } else {
+          setSelectedSemester("");
+      }
+
     } else {
       setError("You are not authorized to view this page.");
     }
-    // eslint-disable-next-line
   }, [role]);
 
   const fetchDropdownData = async () => {
@@ -54,6 +90,8 @@ const DataUpload: React.FC = () => {
       setCourses(allCourseData);
 
       if (surveyData.length > 0) setSelectedSurveyId(surveyData[0].id);
+      else setSelectedSurveyId("");
+
       if (facultyData.length > 0) {
         setSelectedFacultyId(facultyData[0].id);
         const initialDepartments = allDepartmentData.filter(d => d.facultyId === facultyData[0].id);
@@ -86,26 +124,14 @@ const DataUpload: React.FC = () => {
     setSelectedFacultyId(facultyId);
     setSelectedDepartmentId("");
     setSelectedCourseId("");
-    const filteredDepartments = departments.filter(d => d.facultyId === facultyId);
-    if (filteredDepartments.length > 0) {
-      setSelectedDepartmentId(filteredDepartments[0].id);
-      const filteredCourses = courses.filter(c => c.departmentId === filteredDepartments[0].id);
-      if (filteredCourses.length > 0) {
-        setSelectedCourseId(filteredCourses[0].id);
-      } else {
-        setSelectedCourseId("");
-      }
-    }
+    // No need for filteredDepartments here, it will be handled in render logic
   };
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const departmentId = e.target.value;
     setSelectedDepartmentId(departmentId);
     setSelectedCourseId("");
-    const filteredCourses = courses.filter(c => c.departmentId === departmentId);
-    if (filteredCourses.length > 0) {
-      setSelectedCourseId(filteredCourses[0].id);
-    }
+    // No need for filteredCourses here, it will be handled in render logic
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,8 +146,8 @@ const DataUpload: React.FC = () => {
     e.preventDefault();
     setMessage(null);
     setError(null);
-    if (!selectedSurveyId || !selectedFacultyId || !selectedDepartmentId || !selectedCourseId || !selectedFile) {
-      setError("Please select a survey, faculty, department, course, and a file.");
+    if (!selectedSurveyId || !selectedFacultyId || !selectedDepartmentId || !selectedCourseId || !selectedSemester || !selectedFile) {
+      setError("Please select a survey, faculty, department, course, semester, and a file.");
       return;
     }
     setLoading(true);
@@ -131,12 +157,13 @@ const DataUpload: React.FC = () => {
         selectedSurveyId,
         selectedFacultyId,
         selectedDepartmentId,
-        selectedCourseId
+        selectedCourseId,
+        selectedSemester
       );
       setMessage(responseMessage);
       setSelectedFile(null);
     } catch (err: any) {
-      setError(err.response?.data || "Failed to upload survey results.");
+      setError(err.response?.data?.message || err.message || "Failed to upload survey results.");
     } finally {
       setLoading(false);
     }
@@ -153,8 +180,14 @@ const DataUpload: React.FC = () => {
     );
   }
 
-  const currentFilteredDepartments = departments.filter(d => d.facultyId === selectedFacultyId);
-  const currentFilteredCourses = courses.filter(c => c.departmentId === selectedDepartmentId);
+  // FIX: Moved filtering logic directly into JSX to avoid 'never read' warnings and keep it concise
+  const departmentsForSelect = selectedFacultyId
+    ? departments.filter(d => d.facultyId === selectedFacultyId)
+    : departments;
+
+  const coursesForSelect = selectedDepartmentId
+    ? courses.filter(c => c.departmentId === selectedDepartmentId)
+    : courses;
 
   return (
     <div className="min-h-screen flex flex-col items-center py-10 px-2" style={{ background: BG }}>
@@ -197,9 +230,9 @@ const DataUpload: React.FC = () => {
                 required
               >
                 <option value="" disabled>Select a Faculty</option>
-                {faculties.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>
-                    {faculty.name}
+                {faculties.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name}
                   </option>
                 ))}
               </select>
@@ -215,12 +248,12 @@ const DataUpload: React.FC = () => {
                 onChange={handleDepartmentChange}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
                 required
-                disabled={!selectedFacultyId || currentFilteredDepartments.length === 0}
+                disabled={!selectedFacultyId && departments.length === 0}
               >
                 <option value="" disabled>Select a Department</option>
-                {currentFilteredDepartments.map((department) => (
-                  <option key={department.id} value={department.id}>
-                    {department.name}
+                {departmentsForSelect.map((dep) => ( // FIX: Use departmentsForSelect
+                  <option key={dep.id} value={dep.id}>
+                    {dep.name}
                   </option>
                 ))}
               </select>
@@ -236,13 +269,32 @@ const DataUpload: React.FC = () => {
                 onChange={(e) => setSelectedCourseId(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
                 required
-                disabled={!selectedDepartmentId || currentFilteredCourses.length === 0}
+                disabled={!selectedDepartmentId && courses.length === 0}
               >
                 <option value="" disabled>Select a Course</option>
-                {currentFilteredCourses.map((course) => (
+                {coursesForSelect.map((course: Course) => ( // FIX: Explicitly type 'course'
                   <option key={course.id} value={course.id}>
                     {course.courseCode} - {course.courseName}
                   </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="semester-select" className="block text-gray-700 text-xs font-semibold mb-1">
+                Select Semester
+              </label>
+              <select
+                id="semester-select"
+                value={selectedSemester}
+                onChange={(e) => setSelectedSemester(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition"
+                required
+                disabled={availableSemesters.length === 0}
+              >
+                <option value="" disabled>Select a Semester</option>
+                {availableSemesters.map((sem) => (
+                  <option key={sem} value={sem}>{sem}</option>
                 ))}
               </select>
             </div>
@@ -254,7 +306,7 @@ const DataUpload: React.FC = () => {
               <input
                 type="file"
                 id="file-input"
-                accept=".xlsx, .xls"
+                accept=".xlsx, .xls, .csv"
                 onChange={handleFileChange}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#21409a] hover:file:bg-blue-100"
                 required

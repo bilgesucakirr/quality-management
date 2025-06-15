@@ -5,9 +5,14 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import SurveyManagement from "./pages/SurveyManagement";
-import YokakCriterionManagement from "./pages/YokakCriterionManagement"; // NEW Import
-import CourseManagement from "./pages/CourseManagement"; // NEW Import
-import DataUpload from "./pages/DataUpload"; // NEW Import
+import YokakCriterionManagement from "./pages/YokakCriterionManagement";
+import CourseManagement from "./pages/CourseManagement";
+import DataUpload from "./pages/DataUpload";
+import AnalysisPage from "./pages/AnalysisPage";
+import SurveySubmissionManagement from "./pages/SurveySubmissionManagement";
+// FIX: Re-added imports for Faculty and Department Management pages
+import FacultyManagementPage from "./pages/FacultyManagementPage"; 
+import DepartmentManagementPage from "./pages/DepartmentManagementPage";
 import Layout from "./components/Layout";
 
 function App() {
@@ -22,9 +27,14 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/user-management" element={<UserManagement />} />
           <Route path="/survey-management" element={<SurveyManagement />} />
-          <Route path="/yokak-criterion-management" element={<YokakCriterionManagement />} /> {/* NEW Route */}
-          <Route path="/course-management" element={<CourseManagement />} /> {/* NEW Route */}
-          <Route path="/data-upload" element={<DataUpload />} /> {/* NEW Route */}
+          <Route path="/yokak-criterion-management" element={<YokakCriterionManagement />} />
+          <Route path="/course-management" element={<CourseManagement />} />
+          <Route path="/data-upload" element={<DataUpload />} />
+          <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/survey-submissions" element={<SurveySubmissionManagement />} />
+          {/* FIX: Re-added routes for Faculty and Department Management pages */}
+          <Route path="/faculty-management" element={<FacultyManagementPage />} />
+          <Route path="/department-management" element={<DepartmentManagementPage />} />
           {/* Diğer yetkilendirilmiş sayfalar buraya eklenecek */}
         </Route>
       </Routes>

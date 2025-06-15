@@ -27,7 +27,7 @@ const CourseManagement: React.FC = () => {
   const [newCourseCode, setNewCourseCode] = useState("");
   const [newCourseName, setNewCourseName] = useState("");
   const [newCredits, setNewCredits] = useState<string>("");
-  const [newSemester, setNewSemester] = useState("");
+  const [newSemester, setNewSemester] = useState(""); // NEW: Added newSemester state
   const [newFacultyId, setNewFacultyId] = useState("");
   const [newDepartmentId, setNewDepartmentId] = useState("");
   const [newInstructorId, setNewInstructorId] = useState("");
@@ -37,7 +37,7 @@ const CourseManagement: React.FC = () => {
   const [editCourseCode, setEditCourseCode] = useState("");
   const [editCourseName, setEditCourseName] = useState("");
   const [editCredits, setEditCredits] = useState<string>("");
-  const [editSemester, setEditSemester] = useState("");
+  const [editSemester, setEditSemester] = useState(""); // NEW: Added editSemester state
   const [editFacultyId, setEditFacultyId] = useState("");
   const [editDepartmentId, setEditDepartmentId] = useState("");
   const [editInstructorId, setEditInstructorId] = useState("");
@@ -99,14 +99,14 @@ const CourseManagement: React.FC = () => {
         courseCode: newCourseCode,
         courseName: newCourseName,
         credits: parseInt(newCredits),
-        semester: newSemester,
+        semester: newSemester, // NEW: Pass newSemester
         departmentId: newDepartmentId,
         instructorId: newInstructorId || undefined,
       });
       setNewCourseCode("");
       setNewCourseName("");
       setNewCredits("");
-      setNewSemester("");
+      setNewSemester(""); // NEW: Clear newSemester
       if (faculties.length > 0) {
         setNewFacultyId(faculties[0].id);
         const initialDepartments = departments.filter(d => d.facultyId === faculties[0].id);
@@ -133,7 +133,7 @@ const CourseManagement: React.FC = () => {
     setEditCourseCode(course.courseCode);
     setEditCourseName(course.courseName);
     setEditCredits(course.credits.toString());
-    setEditSemester(course.semester);
+    setEditSemester(course.semester); // NEW: Set editSemester
     const departmentOfCourse = departments.find(d => d.id === course.departmentId);
     setEditFacultyId(departmentOfCourse?.facultyId || "");
     setEditDepartmentId(course.departmentId);
@@ -145,7 +145,7 @@ const CourseManagement: React.FC = () => {
     setEditCourseCode("");
     setEditCourseName("");
     setEditCredits("");
-    setEditSemester("");
+    setEditSemester(""); // NEW: Clear editSemester
     setEditFacultyId("");
     setEditDepartmentId("");
     setEditInstructorId("");
@@ -164,7 +164,7 @@ const CourseManagement: React.FC = () => {
         courseCode: editCourseCode,
         courseName: editCourseName,
         credits: parseInt(editCredits),
-        semester: editSemester,
+        semester: editSemester, // NEW: Pass editSemester
         departmentId: editDepartmentId,
         instructorId: editInstructorId || undefined,
       });
