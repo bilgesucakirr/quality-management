@@ -1,5 +1,3 @@
-// src/types/Analysis.ts
-
 export interface OverallAverageResponse {
   averageScore: number;
   totalSubmissions: number;
@@ -11,14 +9,23 @@ export interface EntityAverageResponse {
   name: string;
   averageScore: number;
   totalSubmissions: number;
-  type: "FACULTY" | "DEPARTMENT" | "COURSE"; // Corresponding to backend enum/string
+  type: "FACULTY" | "DEPARTMENT" | "COURSE"; 
 }
 
-export interface CriterionAverageResponse { // <-- BU SATIR VE SONRASI TAM OLDUĞUNDAN EMİN OLUN
+export interface CriterionAverageResponse {
   criterionId: string;
   criterionCode: string;
   criterionName: string;
-  criterionLevel: "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION"; // Corresponding to backend enum/string
+  criterionLevel: "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION"; 
+  averageScore: number;
+  totalAnswers: number;
+}
+
+export interface QuestionAverageByDepartmentResponse {
+  departmentId: string;
+  departmentName: string;
+  questionId: string;
+  questionText: string;
   averageScore: number;
   totalAnswers: number;
 }

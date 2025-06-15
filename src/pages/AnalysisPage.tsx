@@ -1,4 +1,3 @@
-// src/pages/AnalysisPage.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../store/AuthStore";
 import { useNavigate } from "react-router-dom";
@@ -6,37 +5,40 @@ import {
   getOverallAverage,
   getEntityAverages,
   getCriterionAverages,
+  getQuestionAveragesByDepartment, 
 } from "../api/AnalysisService";
 import { getAllFaculties } from "../api/FacultyService";
 import { getAllDepartments } from "../api/DepartmentService";
 import { getAllCourses } from "../api/CourseService";
 import { getYokakCriteriaByLevel } from "../api/YokakCriterionService";
+import { getAllSurveys } from "../api/SurveyService"; 
 import type { 
   OverallAverageResponse,
   EntityAverageResponse,
   CriterionAverageResponse,
+  QuestionAverageByDepartmentResponse, 
 } from "../types/Analysis";
 import type { Faculty, Department } from "../types/University";
 import type { Course } from "../types/Course";
 import type { YokakCriterionResponse } from "../types/YokakCriterion";
+import type { SurveyDto, QuestionResponse } from "../types/Survey"; 
 
 const BG = "#f8f9fb";
 const BORDER_COLOR = "#e5eaf8";
 
 type FilterLevel = "" | "FACULTY" | "DEPARTMENT" | "COURSE";
 type CriterionFilterLevel = "" | "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION";
+type QuestionAnalysisTab = "QUESTION_BY_DEPARTMENT";
 
 const AnalysisPage: React.FC = () => {
   const { role } = useAuthStore();
   const navigate = useNavigate();
 
-  // Filter States
   const [selectedSemester, setSelectedSemester] = useState<string>("");
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
 
-  // Data for Dropdowns
   const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -45,12 +47,16 @@ const AnalysisPage: React.FC = () => {
   const [allMainCriteria, setAllMainCriteria] = useState<YokakCriterionResponse[]>([]);
   const [allSubCriteria, setAllSubCriteria] = useState<YokakCriterionResponse[]>([]);
 
-  // Analysis Data States
   const [overallAverage, setOverallAverage] = useState<OverallAverageResponse | null>(null);
   const [entityAverages, setEntityAverages] = useState<EntityAverageResponse[]>([]);
   const [criterionAverages, setCriterionAverages] = useState<CriterionAverageResponse[]>([]);
+  const [questionDepartmentAverages, setQuestionDepartmentAverages] = useState<QuestionAverageByDepartmentResponse[]>([]); 
 
-  // UI State
+  const [surveys, setSurveys] = useState<SurveyDto[]>([]); // All surveys for dropdown
+  const [selectedSurveyIdForQuestionAnalysis, setSelectedSurveyIdForQuestionAnalysis] = useState<string>("");
+  const [questionsOfSelectedSurvey, setQuestionsOfSelectedSurvey] = useState<QuestionResponse[]>([]); 
+  const [selectedQuestionIdForQuestionAnalysis, setSelectedQuestionIdForQuestionAnalysis] = useState<string>("");
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeAnalysisTab, setActiveAnalysisTab] = useState<FilterLevel>("FACULTY");
@@ -58,7 +64,6 @@ const AnalysisPage: React.FC = () => {
   const [selectedParentCriterionId, setSelectedParentCriterionId] = useState<string>("");
   const [selectedParentCriterionHeaderId, setSelectedParentCriterionHeaderId] = useState<string>("");
 
-  // --- Initial Data Fetch for Dropdowns ---
   useEffect(() => {
     if (!role || !["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role)) {
       setError("You are not authorized to view this page.");
@@ -70,6 +75,7 @@ const AnalysisPage: React.FC = () => {
       setError(null);
       try {
         const [
+          surveyData, 
           facultyData,
           departmentData,
           courseData,
@@ -77,6 +83,7 @@ const AnalysisPage: React.FC = () => {
           mainCriteria,
           subCriteria
         ] = await Promise.all([
+          getAllSurveys(), 
           getAllFaculties(),
           getAllDepartments(),
           getAllCourses(),
@@ -85,6 +92,7 @@ const AnalysisPage: React.FC = () => {
           getYokakCriteriaByLevel("SUB_CRITERION")
         ]);
 
+        setSurveys(surveyData); 
         setFaculties(facultyData);
         setDepartments(departmentData);
         setCourses(courseData);
@@ -92,27 +100,23 @@ const AnalysisPage: React.FC = () => {
         setAllMainCriteria(mainCriteria);
         setAllSubCriteria(subCriteria);
 
-        // FIX: Generate semesters for a wider range (e.g., current year - 2 to current year + 2)
         const semesters: string[] = [];
         const currentYear = new Date().getFullYear();
-        const startYearForGeneration = currentYear - 2; // Go back 2 years for historical data
-        const endYearForGeneration = currentYear + 2;   // Go forward 2 years for future planning
+        const startYearForGeneration = currentYear - 2;
+        const endYearForGeneration = currentYear + 2;
 
         for (let year = startYearForGeneration; year <= endYearForGeneration; year++) {
             semesters.push(`FALL${String(year).substring(2)}`);
-            semesters.push(`SPRING${String(year + 1).substring(2)}`); // Spring is in the *next* calendar year
-            semesters.push(`SUMMER${String(year + 1).substring(2)}`); // Summer is in the *next* calendar year
+            semesters.push(`SPRING${String(year + 1).substring(2)}`);
+            semesters.push(`SUMMER${String(year + 1).substring(2)}`);
         }
-
-        // Remove duplicates and sort them chronologically
         const uniqueSemesters = Array.from(new Set(semesters));
         uniqueSemesters.sort((a, b) => {
             const getSemesterOrder = (s: string) => {
                 const yearPart = parseInt(s.substring(s.length - 2));
                 const typePart = s.substring(0, s.length - 2);
-                let order = yearPart * 100; // Base on year, multiplied to make space for semester types
-
-                if (typePart === "FALL") order += 1; // FALL is typically the first in an academic year
+                let order = yearPart * 100;
+                if (typePart === "FALL") order += 1;
                 else if (typePart === "SPRING") order += 2;
                 else if (typePart === "SUMMER") order += 3;
                 return order;
@@ -121,7 +125,18 @@ const AnalysisPage: React.FC = () => {
         });
         setAvailableSemesters(uniqueSemesters);
         
-        // Set default to the latest semester available in the list
+        if (surveyData.length > 0) { 
+            setSelectedSurveyIdForQuestionAnalysis(surveyData[0].id);
+            setQuestionsOfSelectedSurvey(surveyData[0].questions || []);
+            if (surveyData[0].questions && surveyData[0].questions.length > 0) {
+                setSelectedQuestionIdForQuestionAnalysis(surveyData[0].questions[0].id);
+            }
+        } else {
+            setSelectedSurveyIdForQuestionAnalysis("");
+            setQuestionsOfSelectedSurvey([]);
+            setSelectedQuestionIdForQuestionAnalysis("");
+        }
+
         if (uniqueSemesters.length > 0) {
             setSelectedSemester(uniqueSemesters[uniqueSemesters.length - 1]);
         } else {
@@ -149,7 +164,6 @@ const AnalysisPage: React.FC = () => {
     fetchDropdownData();
   }, [role, navigate]);
 
-  // --- Data Fetch for Analysis Results ---
   const fetchAnalysisData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -189,24 +203,37 @@ const AnalysisPage: React.FC = () => {
       );
       setCriterionAverages(criterionAnalysis);
 
+      if (selectedSurveyIdForQuestionAnalysis && selectedQuestionIdForQuestionAnalysis) {
+        const questionDeptAvg = await getQuestionAveragesByDepartment(
+            selectedSurveyIdForQuestionAnalysis,
+            selectedQuestionIdForQuestionAnalysis,
+            selectedSemester || undefined,
+            selectedFacultyId || undefined,
+            selectedDepartmentId || undefined,
+            selectedCourseId || undefined
+        );
+        setQuestionDepartmentAverages(questionDeptAvg);
+      } else {
+        setQuestionDepartmentAverages([]); 
+      }
+
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || "Failed to fetch analysis data.");
       setOverallAverage(null);
       setEntityAverages([]);
       setCriterionAverages([]);
+      setQuestionDepartmentAverages([]); 
     } finally {
       setLoading(false);
     }
-  }, [selectedSemester, selectedFacultyId, selectedDepartmentId, selectedCourseId, activeAnalysisTab, activeCriterionTab, selectedParentCriterionId, selectedParentCriterionHeaderId, role]);
+  }, [selectedSemester, selectedFacultyId, selectedDepartmentId, selectedCourseId, activeAnalysisTab, activeCriterionTab, selectedParentCriterionId, selectedParentCriterionHeaderId, selectedSurveyIdForQuestionAnalysis, selectedQuestionIdForQuestionAnalysis, role, surveys]); // NEW: Add question analysis states to dependencies
 
-  // --- Trigger Data Fetch on Filter Change ---
   useEffect(() => {
     if (role && ["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role)) {
       fetchAnalysisData();
     }
   }, [fetchAnalysisData, role]);
 
-  // --- Filter and Tab Change Handlers ---
   const handleFacultyFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const facultyId = e.target.value;
     setSelectedFacultyId(facultyId);
@@ -246,7 +273,29 @@ const AnalysisPage: React.FC = () => {
       setSelectedParentCriterionId(e.target.value);
   };
 
-  // --- Filtered Dropdown Options ---
+  const handleSurveySelectForQuestionAnalysis = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const surveyId = e.target.value;
+      setSelectedSurveyIdForQuestionAnalysis(surveyId);
+      const survey = surveys.find(s => s.id === surveyId);
+      if (survey) {
+          setQuestionsOfSelectedSurvey(survey.questions || []);
+          if (survey.questions && survey.questions.length > 0) {
+              setSelectedQuestionIdForQuestionAnalysis(survey.questions[0].id);
+          } else {
+              setSelectedQuestionIdForQuestionAnalysis("");
+          }
+      } else {
+          setQuestionsOfSelectedSurvey([]);
+          setSelectedQuestionIdForQuestionAnalysis("");
+      }
+      setQuestionDepartmentAverages([]); 
+  };
+
+  const handleQuestionSelectForQuestionAnalysis = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setSelectedQuestionIdForQuestionAnalysis(e.target.value);
+      setQuestionDepartmentAverages([]); 
+  };
+
   const filteredDepartments = selectedFacultyId
     ? departments.filter(d => d.facultyId === selectedFacultyId)
     : departments;
@@ -255,7 +304,6 @@ const AnalysisPage: React.FC = () => {
     ? courses.filter(c => c.departmentId === selectedDepartmentId)
     : courses;
 
-  // Helper to correctly get parent name based on criterionId and its level in the hierarchy
   const getParentCriterionName = (criterionId: string, criterionLevel: "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION") => {
     if (criterionLevel === "SUB_CRITERION") {
         const subCriterion = allSubCriteria.find(sc => sc.id === criterionId);
@@ -274,13 +322,10 @@ const AnalysisPage: React.FC = () => {
     return "N/A";
   };
   
-  // Helper to correctly display criterion level string
   const formatCriterionLevel = (level: string) => {
       return level.replace('_', ' ');
   };
 
-
-  // --- Access Control ---
   if (!role || !["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role)) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -302,7 +347,6 @@ const AnalysisPage: React.FC = () => {
         {error && <div className="text-red-600 text-center mb-4">{error}</div>}
         {loading && <div className="text-center text-[#21409a]">Loading analysis data...</div>}
 
-        {/* --- Global Filters Section --- */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Global Filters</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -355,7 +399,7 @@ const AnalysisPage: React.FC = () => {
                 disabled={!selectedDepartmentId && courses.length === 0}
               >
                 <option value="">All Courses</option>
-                {filteredCourses.map(course => (
+                {filteredCourses.map((course: Course) => (
                   <option key={course.id} value={course.id}>{course.courseCode} - {course.courseName}</option>
                 ))}
               </select>
@@ -363,7 +407,6 @@ const AnalysisPage: React.FC = () => {
           </div>
         </div>
 
-        {/* --- Overall Average Section --- */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Overall Survey Average</h2>
           {overallAverage ? (
@@ -377,7 +420,6 @@ const AnalysisPage: React.FC = () => {
           )}
         </div>
 
-        {/* --- Entity Averages Section (Tabs for Faculty, Department, Course) --- */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Averages by Entity</h2>
           
@@ -403,7 +445,6 @@ const AnalysisPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Entity Averages Table */}
           {entityAverages.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
               <table className="min-w-full bg-white text-sm">
@@ -430,7 +471,6 @@ const AnalysisPage: React.FC = () => {
           )}
         </div>
 
-        {/* --- YÖKAK Criterion Averages Section --- */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Averages by YÖKAK Criteria</h2>
           
@@ -456,7 +496,6 @@ const AnalysisPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Parent Criterion Filter for Criterion Averages */}
           {(activeCriterionTab === "MAIN_CRITERION" || activeCriterionTab === "SUB_CRITERION") && (
               <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-semibold mb-1">Filter by Parent Header:</label>
@@ -491,8 +530,6 @@ const AnalysisPage: React.FC = () => {
               </div>
           )}
 
-
-          {/* Criterion Averages Table */}
           {criterionAverages.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
               <table className="min-w-full bg-white text-sm">
@@ -518,11 +555,10 @@ const AnalysisPage: React.FC = () => {
                       <td className="py-2 px-4 border-b border-gray-100">{criterion.totalAnswers || 0}</td>
                       {activeCriterionTab !== "HEADER" && (
                          <td className="py-2 px-4 border-b border-gray-100">
-                           {/* FIX: Corrected parent rendering logic based on criterion.criterionLevel */}
                            {criterion.criterionLevel === "SUB_CRITERION" ? 
-                               getParentCriterionName(criterion.criterionId, "MAIN_CRITERION") : // Sub-criterion'ın parent'ı Main-criterion'dır
+                               getParentCriterionName(criterion.criterionId, "SUB_CRITERION") : 
                                criterion.criterionLevel === "MAIN_CRITERION" ?
-                                   getParentCriterionName(criterion.criterionId, "HEADER") : // Main-criterion'ın parent'ı Header'dır
+                                   getParentCriterionName(criterion.criterionId, "MAIN_CRITERION") : 
                                    "N/A"
                            }
                          </td>
@@ -534,6 +570,67 @@ const AnalysisPage: React.FC = () => {
             </div>
           ) : (
             <p className="text-gray-600 text-center">No data for {activeCriterionTab.toLowerCase()} averages with current filters.</p>
+          )}
+        </div>
+
+        {/* NEW: Question Averages by Department Section */}
+        <div className="bg-white rounded-xl shadow p-6 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
+          <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Question Averages by Department</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-gray-700 text-sm font-semibold mb-1">Select Survey:</label>
+              <select
+                value={selectedSurveyIdForQuestionAnalysis}
+                onChange={handleSurveySelectForQuestionAnalysis}
+                className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition bg-white"
+                disabled={surveys.length === 0}
+              >
+                <option value="">Select a Survey</option>
+                {surveys.map(survey => (
+                  <option key={survey.id} value={survey.id}>{survey.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-700 text-sm font-semibold mb-1">Select Question:</label>
+              <select
+                value={selectedQuestionIdForQuestionAnalysis}
+                onChange={handleQuestionSelectForQuestionAnalysis}
+                className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#21409a] outline-none transition bg-white"
+                disabled={!selectedSurveyIdForQuestionAnalysis || questionsOfSelectedSurvey.length === 0}
+              >
+                <option value="">Select a Question</option>
+                {questionsOfSelectedSurvey.map(question => (
+                  <option key={question.id} value={question.id}>{question.questionText}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {questionDepartmentAverages.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
+              <table className="min-w-full bg-white text-sm">
+                <thead>
+                  <tr>
+                    <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Department</th>
+                    <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Average Score</th>
+                    <th className="py-3 px-4 bg-[#e5eaf8] text-[#21409a] font-semibold">Total Answers</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {questionDepartmentAverages.map((avg, index) => (
+                    <tr key={avg.departmentId} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition`}>
+                      <td className="py-2 px-4 border-b border-gray-100">{avg.departmentName}</td>
+                      <td className="py-2 px-4 border-b border-gray-100">{avg.averageScore ? avg.averageScore.toFixed(2) : "N/A"}</td>
+                      <td className="py-2 px-4 border-b border-gray-100">{avg.totalAnswers || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-600 text-center">Please select a survey and question to see department averages, or no data available with current filters.</p>
           )}
         </div>
       </div>
