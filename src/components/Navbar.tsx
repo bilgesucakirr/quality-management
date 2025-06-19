@@ -1,11 +1,11 @@
+// src/components/Navbar.tsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, LayoutDashboard, Users, ClipboardList, BookOpen, ListTree, BarChart2, FileText, Building, GitFork } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, ClipboardList, BookOpen, ListTree, BarChart2, FileText, Building, GitFork, School, UserCog, Briefcase } from "lucide-react";
 import isikUniversityLogo from "/i.u_logo-blue-en.png";
-import { useAuthStore } from "../store/AuthStore"; // FIX: Added useAuthStore import
+import { useAuthStore } from "../store/AuthStore";
 
 const BG = "#f8f9fb";
-// const PRIMARY = "#21409a"; // REMOVED: No longer used, removed to clear 'never read' warning
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -16,8 +16,31 @@ const Navbar: React.FC = () => {
     navigate("/login");
   };
 
-  const canViewAnalysis = role && ["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role);
+  // SADECE STAFF bu linki görecek. ADMIN ve RECTOR kendi dashboardlarında analizlere sahip.
+  const canViewSeparateAnalysisPage = role === "STAFF"; 
   const canManageSubmissions = role && ["ADMIN", "STAFF"].includes(role);
+
+  const getDashboardLink = () => {
+    if (role === "STUDENT") return "/student-dashboard";
+    if (role === "DEAN") return "/dean-dashboard";
+    if (role === "RECTOR") return "/rector-dashboard";
+    return "/dashboard";
+  };
+
+  const getDashboardText = () => {
+    if (role === "STUDENT") return "My Dashboard";
+    if (role === "DEAN") return "Dean Dashboard";
+    if (role === "RECTOR") return "Rector Dashboard";
+    return "Dashboard";
+  };
+
+  const getDashboardIcon = () => {
+    if (role === "STUDENT") return <School size={18} />;
+    if (role === "DEAN") return <UserCog size={18} />;
+    if (role === "RECTOR") return <Briefcase size={18} />;
+    return <LayoutDashboard size={18} />;
+  };
+
 
   return (
     <nav
@@ -29,7 +52,6 @@ const Navbar: React.FC = () => {
         minHeight: 56,
       }}
     >
-      {/* Logo */}
       <Link to="/" className="flex items-center" tabIndex={-1}>
         <img
           src={isikUniversityLogo}
@@ -39,14 +61,15 @@ const Navbar: React.FC = () => {
         />
       </Link>
 
-      {/* Nav Links */}
       <div className="flex space-x-5 items-center">
-        <Link
-          to="/dashboard"
-          className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
-        >
-          <LayoutDashboard size={18} /> Dashboard
-        </Link>
+         {role && (
+            <Link
+            to={getDashboardLink()}
+            className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
+            >
+            {getDashboardIcon()} {getDashboardText()}
+            </Link>
+        )}
         {role === "ADMIN" && (
           <>
             <Link
@@ -98,7 +121,7 @@ const Navbar: React.FC = () => {
             </Link>
           </>
         )}
-        {canViewAnalysis && (
+        {canViewSeparateAnalysisPage && ( // canViewGeneralAnalysis yerine canViewSeparateAnalysisPage kullanıldı
           <Link
             to="/analysis"
             className="text-[#18316e] hover:text-[#21409a] font-medium text-sm flex items-center gap-1 hover:underline underline-offset-2 transition"
@@ -116,7 +139,6 @@ const Navbar: React.FC = () => {
         )}
       </div>
 
-      {/* Session Management */}
       <div>
         {role ? (
           <button

@@ -13,7 +13,9 @@ import FacultyManagementPage from "./pages/FacultyManagementPage";
 import DepartmentManagementPage from "./pages/DepartmentManagementPage";
 import GraphicalAnalysisPage from "./pages/GraphicalAnalysisPage"; 
 import Layout from "./components/Layout";
-
+import StudentDashboard from "./pages/StudentDashboard";
+import DeanDashboard from "./pages/DeanDashboard";
+import RectorDashboard from "./pages/RectorDashboard"; 
 function App() {
   return (
     <BrowserRouter>
@@ -33,6 +35,9 @@ function App() {
           <Route path="/survey-submissions" element={<SurveySubmissionManagement />} />
           <Route path="/faculty-management" element={<FacultyManagementPage />} />
           <Route path="/department-management" element={<DepartmentManagementPage />} />
+          <Route path="/student-dashboard" element={<StudentDashboard />} />
+          <Route path="/dean-dashboard" element={<DeanDashboard />} />
+          <Route path="/rector-dashboard" element={<RectorDashboard />} /> 
         </Route>
       </Routes>
     </BrowserRouter>
