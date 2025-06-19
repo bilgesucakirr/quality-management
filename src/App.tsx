@@ -1,4 +1,3 @@
-// src/App.tsx (UPDATED)
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import Home from "./pages/Home";
@@ -10,9 +9,9 @@ import CourseManagement from "./pages/CourseManagement";
 import DataUpload from "./pages/DataUpload";
 import AnalysisPage from "./pages/AnalysisPage";
 import SurveySubmissionManagement from "./pages/SurveySubmissionManagement";
-// FIX: Re-added imports for Faculty and Department Management pages
-import FacultyManagementPage from "./pages/FacultyManagementPage"; 
+import FacultyManagementPage from "./pages/FacultyManagementPage";
 import DepartmentManagementPage from "./pages/DepartmentManagementPage";
+import GraphicalAnalysisPage from "./pages/GraphicalAnalysisPage"; 
 import Layout from "./components/Layout";
 
 function App() {
@@ -22,7 +21,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Layout ile sarılı rotalar (genellikle giriş sonrası sayfalar) */}
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/user-management" element={<UserManagement />} />
@@ -31,11 +29,10 @@ function App() {
           <Route path="/course-management" element={<CourseManagement />} />
           <Route path="/data-upload" element={<DataUpload />} />
           <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/graphical-analysis" element={<GraphicalAnalysisPage />} /> 
           <Route path="/survey-submissions" element={<SurveySubmissionManagement />} />
-          {/* FIX: Re-added routes for Faculty and Department Management pages */}
           <Route path="/faculty-management" element={<FacultyManagementPage />} />
           <Route path="/department-management" element={<DepartmentManagementPage />} />
-          {/* Diğer yetkilendirilmiş sayfalar buraya eklenecek */}
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "../store/AuthStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   getOverallAverage,
   getEntityAverages,
@@ -22,13 +22,13 @@ import type { Faculty, Department } from "../types/University";
 import type { Course } from "../types/Course";
 import type { YokakCriterionResponse } from "../types/YokakCriterion";
 import type { SurveyDto, QuestionResponse } from "../types/Survey"; 
+import { BarChartBig } from 'lucide-react'; // Örnek bir ikon
 
 const BG = "#f8f9fb";
 const BORDER_COLOR = "#e5eaf8";
 
 type FilterLevel = "" | "FACULTY" | "DEPARTMENT" | "COURSE";
 type CriterionFilterLevel = "" | "HEADER" | "MAIN_CRITERION" | "SUB_CRITERION";
-type QuestionAnalysisTab = "QUESTION_BY_DEPARTMENT";
 
 const AnalysisPage: React.FC = () => {
   const { role } = useAuthStore();
@@ -52,7 +52,7 @@ const AnalysisPage: React.FC = () => {
   const [criterionAverages, setCriterionAverages] = useState<CriterionAverageResponse[]>([]);
   const [questionDepartmentAverages, setQuestionDepartmentAverages] = useState<QuestionAverageByDepartmentResponse[]>([]); 
 
-  const [surveys, setSurveys] = useState<SurveyDto[]>([]); // All surveys for dropdown
+  const [surveys, setSurveys] = useState<SurveyDto[]>([]);
   const [selectedSurveyIdForQuestionAnalysis, setSelectedSurveyIdForQuestionAnalysis] = useState<string>("");
   const [questionsOfSelectedSurvey, setQuestionsOfSelectedSurvey] = useState<QuestionResponse[]>([]); 
   const [selectedQuestionIdForQuestionAnalysis, setSelectedQuestionIdForQuestionAnalysis] = useState<string>("");
@@ -226,7 +226,7 @@ const AnalysisPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedSemester, selectedFacultyId, selectedDepartmentId, selectedCourseId, activeAnalysisTab, activeCriterionTab, selectedParentCriterionId, selectedParentCriterionHeaderId, selectedSurveyIdForQuestionAnalysis, selectedQuestionIdForQuestionAnalysis, role, surveys]); // NEW: Add question analysis states to dependencies
+  }, [selectedSemester, selectedFacultyId, selectedDepartmentId, selectedCourseId, activeAnalysisTab, activeCriterionTab, selectedParentCriterionId, selectedParentCriterionHeaderId, selectedSurveyIdForQuestionAnalysis, selectedQuestionIdForQuestionAnalysis, role, surveys]);
 
   useEffect(() => {
     if (role && ["ADMIN", "RECTOR", "DEAN", "STAFF"].includes(role)) {
@@ -405,8 +405,18 @@ const AnalysisPage: React.FC = () => {
               </select>
             </div>
           </div>
+-          <div className="mt-6 flex justify-end">
+            <Link
+              to="/graphical-analysis"
+              className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm rounded-md shadow-md transition-all duration-150 flex items-center gap-2"
+            >
+              <BarChartBig size={18} />
+              View Graphical Analysis
+            </Link>
+          </div>
         </div>
-
+-
+        {/* Overall Survey Average */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Overall Survey Average</h2>
           {overallAverage ? (
@@ -420,10 +430,9 @@ const AnalysisPage: React.FC = () => {
           )}
         </div>
 
+        {/* Averages by Entity */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Averages by Entity</h2>
-          
-          {/* Entity Type Tabs */}
           <div className="flex justify-center mb-4">
             <button 
               onClick={() => handleEntityTabChange("FACULTY")} 
@@ -444,7 +453,6 @@ const AnalysisPage: React.FC = () => {
               Courses
             </button>
           </div>
-
           {entityAverages.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
               <table className="min-w-full bg-white text-sm">
@@ -471,10 +479,9 @@ const AnalysisPage: React.FC = () => {
           )}
         </div>
 
+        {/* Averages by YÖKAK Criteria */}
         <div className="bg-white rounded-xl shadow p-6 mb-8 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Averages by YÖKAK Criteria</h2>
-          
-          {/* Criterion Level Tabs */}
           <div className="flex justify-center mb-4">
             <button 
               onClick={() => handleCriterionTabChange("HEADER")} 
@@ -495,7 +502,6 @@ const AnalysisPage: React.FC = () => {
               Sub Criteria
             </button>
           </div>
-
           {(activeCriterionTab === "MAIN_CRITERION" || activeCriterionTab === "SUB_CRITERION") && (
               <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-semibold mb-1">Filter by Parent Header:</label>
@@ -512,7 +518,6 @@ const AnalysisPage: React.FC = () => {
                   </select>
               </div>
           )}
-
           {activeCriterionTab === "SUB_CRITERION" && (
               <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-semibold mb-1">Filter by Parent Main Criterion:</label>
@@ -529,7 +534,6 @@ const AnalysisPage: React.FC = () => {
                   </select>
               </div>
           )}
-
           {criterionAverages.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
               <table className="min-w-full bg-white text-sm">
@@ -573,10 +577,9 @@ const AnalysisPage: React.FC = () => {
           )}
         </div>
 
-        {/* NEW: Question Averages by Department Section */}
+        {/* Question Averages by Department Section */}
         <div className="bg-white rounded-xl shadow p-6 w-full max-w-4xl border" style={{ borderColor: BORDER_COLOR }}>
           <h2 className="text-xl font-semibold mb-4 text-[#21409a] border-b pb-2" style={{ borderColor: BORDER_COLOR }}>Question Averages by Department</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-gray-700 text-sm font-semibold mb-1">Select Survey:</label>
@@ -607,7 +610,6 @@ const AnalysisPage: React.FC = () => {
               </select>
             </div>
           </div>
-
           {questionDepartmentAverages.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border" style={{ borderColor: BORDER_COLOR }}>
               <table className="min-w-full bg-white text-sm">
