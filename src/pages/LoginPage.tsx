@@ -19,8 +19,7 @@ export default function LoginPage() {
     try {
       const response = await login(data);
       setToken(response.token);
-      alert("Login Success.");
-      navigate("/dashboard");
+        navigate("/dashboard");
     } catch (error) {
       alert("Login Failed. Please check your credentials.");
     }
